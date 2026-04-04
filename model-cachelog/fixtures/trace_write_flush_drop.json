@@ -1,0 +1,14 @@
+[
+  {
+    "action": "writerWrite",
+    "key": 0,
+    "value": 1
+  },
+  {
+    "action": "flusherFlushNext"
+  },
+  {
+    "action": "flusherDrop",
+    "id": 0
+  }
+]

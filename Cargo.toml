@@ -1,0 +1,24 @@
+[workspace]
+members = [".", "model-cachelog"]
+resolver = "2"
+
+[package]
+name = "cachelog-rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "cachelog_rs"
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "live"
+harness = false
+
+[dependencies]
+arc-swap = "1.9"
+crossbeam-queue = "0.3"
+parking_lot = "0.12"
+scc = "3.6.12"
