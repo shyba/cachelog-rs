@@ -1,0 +1,118 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 118 0 118 74 *)
+
+let%span sproofs = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 119 4 119 30
+let%span sproofs'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 117 11 117 28
+let%span sproofs'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 14 8 17 30
+let%span sord = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 162 41 162 102
+let%span sord'0 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 168 41 168 99
+let%span sord'1 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 174 41 174 99
+let%span sord'2 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 180 41 180 102
+let%span sord'3 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 186 41 186 83
+let%span sord'4 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 192 42 192 59
+let%span sord'5 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 193 42 193 59
+let%span sord'6 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 194 41 194 58
+let%span sord'7 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 200 42 200 83
+let%span sord'8 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 201 41 201 85
+let%span sord'9 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 207 42 207 86
+let%span sord'10 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 208 41 208 82
+let%span sord'11 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 214 41 214 97
+let%span sord'12 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 296 16 302 17
+
+use creusot.int.UInt64
+use creusot.prelude.Any
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+let rec dirty_refs_live (self: t_ModelState) (config: t_ModelConfig) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+type t_Ordering = Less | Equal | Greater
+
+function cmp_log_usize (self: UInt64.t) (o: UInt64.t) : t_Ordering = [%#sord'12] if UInt64.lt self o then
+    Less
+  else
+    if self = o then Equal else Greater
+
+
+function eq_cmp_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom eq_cmp_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'11] (x = y) = (cmp_log_usize x y = Equal)
+
+function antisym2_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym2_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'9] cmp_log_usize x y = Greater)
+    -> ([%#sord'10] cmp_log_usize y x = Less)
+
+function antisym1_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym1_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'7] cmp_log_usize x y = Less)
+    -> ([%#sord'8] cmp_log_usize y x = Greater)
+
+function trans_usize (x: UInt64.t) (y: UInt64.t) (z: UInt64.t) (o: t_Ordering) : ()
+
+axiom trans_usize_spec: forall x: UInt64.t, y: UInt64.t, z: UInt64.t, o: t_Ordering. ([%#sord'4] cmp_log_usize x y = o)
+    -> ([%#sord'5] cmp_log_usize y z = o) -> ([%#sord'6] cmp_log_usize x z = o)
+
+function refl_usize (x: UInt64.t) : ()
+
+axiom refl_usize_spec: forall x: UInt64.t. [%#sord'3] cmp_log_usize x x = Equal
+
+function cmp_gt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_gt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'2] UInt64.gt x y = (cmp_log_usize x y = Greater)
+
+function cmp_ge_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_ge_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'1] UInt64.ge x y = (cmp_log_usize x y <> Less)
+
+function cmp_lt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_lt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'0] UInt64.lt x y = (cmp_log_usize x y = Less)
+
+function cmp_le_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_le_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord] UInt64.le x y = (cmp_log_usize x y <> Greater)
+
+predicate valid_config [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 12 0 12 45] (cfg: t_ModelConfig) =
+  [%#sproofs'1] UInt64.gt cfg.key_count (0: UInt64.t)
+  /\ UInt64.gt cfg.value_count (0: UInt64.t)
+  /\ UInt64.gt cfg.max_write (0: UInt64.t) /\ UInt64.gt cfg.max_cache (0: UInt64.t)
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec dirty_refs_live_holds [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 118 0 118 74]
+  (state: t_ModelState) (cfg: t_ModelConfig) (return (x: bool)) =
+  {[@stop_split] [@expl:dirty_refs_live_holds requires] [%#sproofs'0] valid_config cfg}
+  (! bb0
+  [ bb0 = s0
+    [ s0 = dirty_refs_live [%#sproofs] {state} {cfg} (fun (_x: bool) -> [ &_ret <- _x ] s1) | s1 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l () | & state: t_ModelState = state | & cfg: t_ModelConfig = cfg ])
+  [ return (result: bool) -> (! return {result}) ]

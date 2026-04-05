@@ -1,0 +1,620 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 106 9 106 14 *)
+
+(* <model::ModelState as std::clone::Clone> *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 108 4 108 32
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 109 4 109 37
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 110 4 110 36
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 111 4 111 29
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 112 4 112 37
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 113 4 113 34
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 114 4 114 29
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 115 4 115 32
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 116 4 116 25
+let%span smodel'8 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 117 4 117 25
+let%span smodel'9 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 118 4 118 21
+let%span smodel'10 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 119 4 119 22
+let%span smodel'11 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 21 9 21 14
+let%span smodel'12 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 31 9 31 14
+let%span smodel'13 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 41 9 41 14
+let%span smodel'14 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 51 9 51 14
+let%span sclone = "/tmp/creusot-install-check/creusot-std/src/std/clone.rs" 21 18 21 33
+let%span snum = "/tmp/creusot-install-check/creusot-std/src/std/num.rs" 48 26 48 41
+let%span sops = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 160 14 160 114
+let%span sops'0 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 165 14 165 100
+let%span sops'1 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 170 14 170 61
+let%span sops'2 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 126 15 126 59
+let%span sops'3 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 127 14 127 38
+let%span sops'4 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 132 14 132 33
+let%span sops'5 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 137 15 137 31
+let%span sops'6 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 138 15 138 28
+let%span sops'7 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 139 14 139 30
+let%span sops'8 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 144 14 145 104
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 240 18 240 46
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 241 18 242 60
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+
+use creusot.int.UInt64
+use seq.Seq
+use creusot.prelude.Any
+use int.Int
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+type t_VisibleRef = None | Dirty UInt64.t | Clean UInt64.t
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_VisibleRef_Global (self: t_Vec_VisibleRef_Global) : Seq.seq t_VisibleRef
+
+axiom view_Vec_VisibleRef_Global_spec:
+  forall self: t_Vec_VisibleRef_Global. [%#svec'1] Seq.length (view_Vec_VisibleRef_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone [@inline:trivial] (self: ()) (args: t_VisibleRef) (result: t_VisibleRef) =
+  [%#smodel'11] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_once_clone
+
+predicate resolve_clone [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone
+
+predicate postcondition_mut_clone [@inline:trivial] (self: ()) (args: t_VisibleRef) (result_state: ()) (result: t_VisibleRef) =
+  [%#smodel'11] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_mut_clone
+
+function fn_mut_once_clone (self: ()) (args: t_VisibleRef) (res: t_VisibleRef) : ()
+
+axiom fn_mut_once_clone_spec:
+  forall self: (), args: t_VisibleRef, res: t_VisibleRef. [%#sops'8] postcondition_once_clone self args res
+    = (exists res_state: (). postcondition_mut_clone self args res_state res /\ resolve_clone res_state)
+
+predicate hist_inv_clone [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone
+
+function hist_inv_trans_clone (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone self b)
+    -> ([%#sops'6] hist_inv_clone b c) -> ([%#sops'7] hist_inv_clone self c)
+
+function hist_inv_refl_clone (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec: forall self: (). [%#sops'4] hist_inv_clone self self
+
+function postcondition_mut_hist_inv_clone (self: ()) (args: t_VisibleRef) (res_state: ()) (res: t_VisibleRef) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec:
+  forall self: (), args: t_VisibleRef, res_state: (), res: t_VisibleRef. ([%#sops'2] postcondition_mut_clone self args res_state res)
+    -> ([%#sops'3] hist_inv_clone self res_state)
+
+function fn_hist_inv_clone (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec: forall self: (), res_state: (). [%#sops'1] hist_inv_clone self res_state
+    = (self = res_state)
+
+predicate postcondition_clone [@inline:trivial] (self: ()) (args: t_VisibleRef) (result: t_VisibleRef) =
+  [%#smodel'11] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_clone
+
+function fn_once_clone (self: ()) (args: t_VisibleRef) (res: t_VisibleRef) : ()
+
+axiom fn_once_clone_spec:
+  forall self: (), args: t_VisibleRef, res: t_VisibleRef. [%#sops'0] postcondition_once_clone self args res
+    = (postcondition_clone self args res /\ resolve_clone self)
+
+function fn_mut_clone (self: ()) (args: t_VisibleRef) (res_state: ()) (res: t_VisibleRef) : ()
+
+axiom fn_mut_clone_spec:
+  forall self: (), args: t_VisibleRef, res_state: (), res: t_VisibleRef. [%#sops] postcondition_mut_clone self args res_state res
+    = (postcondition_clone self args res /\ self = res_state)
+
+let rec clone_VisibleRef (self: t_VisibleRef) (return (x: t_VisibleRef)) = any
+  [ return (result: t_VisibleRef) -> (! return {result}) ]
+
+let rec clone_Vec_VisibleRef_Global (self_: t_Vec_VisibleRef_Global) (return (x: t_Vec_VisibleRef_Global)) = any
+  [ return (result: t_Vec_VisibleRef_Global) ->
+  {[@stop_split] [@expl:clone_Vec_VisibleRef_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_VisibleRef_Global self_)
+      = Seq.length (view_Vec_VisibleRef_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_VisibleRef_Global self_)
+      -> postcondition_clone () (Seq.get (view_Vec_VisibleRef_Global self_) i) (Seq.get (view_Vec_VisibleRef_Global result) i))}
+    (! return {result}) ]
+
+type t_Option_usize = None'0 | Some'0 UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec'1] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone'0 [@inline:trivial] (self: ()) (args: t_DirtyRecord) (result: t_DirtyRecord) =
+  [%#smodel'12] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_once_clone'0
+
+predicate resolve_clone'0 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone'0
+
+predicate postcondition_mut_clone'0 [@inline:trivial] (self: ()) (args: t_DirtyRecord) (result_state: ()) (result: t_DirtyRecord) =
+  [%#smodel'12] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_mut_clone'0
+
+function fn_mut_once_clone'0 (self: ()) (args: t_DirtyRecord) (res: t_DirtyRecord) : ()
+
+axiom fn_mut_once_clone_spec'0:
+  forall self: (), args: t_DirtyRecord, res: t_DirtyRecord. [%#sops'8] postcondition_once_clone'0 self args res
+    = (exists res_state: (). postcondition_mut_clone'0 self args res_state res /\ resolve_clone'0 res_state)
+
+predicate hist_inv_clone'0 [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone'0
+
+function hist_inv_trans_clone'0 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec'0: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone'0 self b)
+    -> ([%#sops'6] hist_inv_clone'0 b c) -> ([%#sops'7] hist_inv_clone'0 self c)
+
+function hist_inv_refl_clone'0 (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec'0: forall self: (). [%#sops'4] hist_inv_clone'0 self self
+
+function postcondition_mut_hist_inv_clone'0 (self: ()) (args: t_DirtyRecord) (res_state: ()) (res: t_DirtyRecord) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec'0:
+  forall self: (), args: t_DirtyRecord, res_state: (), res: t_DirtyRecord. ([%#sops'2] postcondition_mut_clone'0 self args res_state res)
+    -> ([%#sops'3] hist_inv_clone'0 self res_state)
+
+function fn_hist_inv_clone'0 (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec'0: forall self: (), res_state: (). [%#sops'1] hist_inv_clone'0 self res_state
+    = (self = res_state)
+
+predicate postcondition_clone'0 [@inline:trivial] (self: ()) (args: t_DirtyRecord) (result: t_DirtyRecord) =
+  [%#smodel'12] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_clone'0
+
+function fn_once_clone'0 (self: ()) (args: t_DirtyRecord) (res: t_DirtyRecord) : ()
+
+axiom fn_once_clone_spec'0:
+  forall self: (), args: t_DirtyRecord, res: t_DirtyRecord. [%#sops'0] postcondition_once_clone'0 self args res
+    = (postcondition_clone'0 self args res /\ resolve_clone'0 self)
+
+function fn_mut_clone'0 (self: ()) (args: t_DirtyRecord) (res_state: ()) (res: t_DirtyRecord) : ()
+
+axiom fn_mut_clone_spec'0:
+  forall self: (), args: t_DirtyRecord, res_state: (), res: t_DirtyRecord. [%#sops] postcondition_mut_clone'0 self args res_state res
+    = (postcondition_clone'0 self args res /\ self = res_state)
+
+let rec clone_DirtyRecord (self: t_DirtyRecord) (return (x: t_DirtyRecord)) = any
+  [ return (result: t_DirtyRecord) -> (! return {result}) ]
+
+let rec clone_Vec_DirtyRecord_Global (self_: t_Vec_DirtyRecord_Global) (return (x: t_Vec_DirtyRecord_Global)) = any
+  [ return (result: t_Vec_DirtyRecord_Global) ->
+  {[@stop_split] [@expl:clone_Vec_DirtyRecord_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_DirtyRecord_Global self_)
+      = Seq.length (view_Vec_DirtyRecord_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_DirtyRecord_Global self_)
+      -> postcondition_clone'0 () (Seq.get (view_Vec_DirtyRecord_Global self_) i) (Seq.get (view_Vec_DirtyRecord_Global result) i))}
+    (! return {result}) ]
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec'1] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone'1 [@inline:trivial] (self: ()) (args: UInt64.t) (result: UInt64.t) =
+  let self_ = args in [%#snum] result = self_
+
+meta "rewrite_def" predicate postcondition_once_clone'1
+
+predicate resolve_clone'1 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone'1
+
+predicate postcondition_mut_clone'1 [@inline:trivial] (self: ()) (args: UInt64.t) (result_state: ()) (result: UInt64.t) =
+  let self_ = args in [%#snum] result = self_
+
+meta "rewrite_def" predicate postcondition_mut_clone'1
+
+function fn_mut_once_clone'1 (self: ()) (args: UInt64.t) (res: UInt64.t) : ()
+
+axiom fn_mut_once_clone_spec'1:
+  forall self: (), args: UInt64.t, res: UInt64.t. [%#sops'8] postcondition_once_clone'1 self args res
+    = (exists res_state: (). postcondition_mut_clone'1 self args res_state res /\ resolve_clone'1 res_state)
+
+predicate hist_inv_clone'1 [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone'1
+
+function hist_inv_trans_clone'1 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec'1: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone'1 self b)
+    -> ([%#sops'6] hist_inv_clone'1 b c) -> ([%#sops'7] hist_inv_clone'1 self c)
+
+function hist_inv_refl_clone'1 (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec'1: forall self: (). [%#sops'4] hist_inv_clone'1 self self
+
+function postcondition_mut_hist_inv_clone'1 (self: ()) (args: UInt64.t) (res_state: ()) (res: UInt64.t) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec'1:
+  forall self: (), args: UInt64.t, res_state: (), res: UInt64.t. ([%#sops'2] postcondition_mut_clone'1 self args res_state res)
+    -> ([%#sops'3] hist_inv_clone'1 self res_state)
+
+function fn_hist_inv_clone'1 (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec'1: forall self: (), res_state: (). [%#sops'1] hist_inv_clone'1 self res_state
+    = (self = res_state)
+
+predicate postcondition_clone'1 [@inline:trivial] (self: ()) (args: UInt64.t) (result: UInt64.t) =
+  let self_ = args in [%#snum] result = self_
+
+meta "rewrite_def" predicate postcondition_clone'1
+
+function fn_once_clone'1 (self: ()) (args: UInt64.t) (res: UInt64.t) : ()
+
+axiom fn_once_clone_spec'1:
+  forall self: (), args: UInt64.t, res: UInt64.t. [%#sops'0] postcondition_once_clone'1 self args res
+    = (postcondition_clone'1 self args res /\ resolve_clone'1 self)
+
+function fn_mut_clone'1 (self: ()) (args: UInt64.t) (res_state: ()) (res: UInt64.t) : ()
+
+axiom fn_mut_clone_spec'1:
+  forall self: (), args: UInt64.t, res_state: (), res: UInt64.t. [%#sops] postcondition_mut_clone'1 self args res_state res
+    = (postcondition_clone'1 self args res /\ self = res_state)
+
+let rec clone_usize (self_: UInt64.t) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:clone ensures] [%#snum] result = self_} (! return {result}) ]
+
+let rec clone_Vec_usize_Global (self_: t_Vec_usize_Global) (return (x: t_Vec_usize_Global)) = any
+  [ return (result: t_Vec_usize_Global) ->
+  {[@stop_split] [@expl:clone_Vec_usize_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_usize_Global self_)
+      = Seq.length (view_Vec_usize_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_usize_Global self_)
+      -> postcondition_clone'1 () (Seq.get (view_Vec_usize_Global self_) i) (Seq.get (view_Vec_usize_Global result) i))}
+    (! return {result}) ]
+
+type t_CleanRecord = { present'0: bool; id'0: t_Option_usize; key'0: UInt64.t; value'0: UInt64.t }
+
+function view_Vec_CleanRecord_Global (self: t_Vec_CleanRecord_Global) : Seq.seq t_CleanRecord
+
+axiom view_Vec_CleanRecord_Global_spec:
+  forall self: t_Vec_CleanRecord_Global. [%#svec'1] Seq.length (view_Vec_CleanRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone'2 [@inline:trivial] (self: ()) (args: t_CleanRecord) (result: t_CleanRecord) =
+  [%#smodel'13] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_once_clone'2
+
+predicate resolve_clone'2 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone'2
+
+predicate postcondition_mut_clone'2 [@inline:trivial] (self: ()) (args: t_CleanRecord) (result_state: ()) (result: t_CleanRecord) =
+  [%#smodel'13] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_mut_clone'2
+
+function fn_mut_once_clone'2 (self: ()) (args: t_CleanRecord) (res: t_CleanRecord) : ()
+
+axiom fn_mut_once_clone_spec'2:
+  forall self: (), args: t_CleanRecord, res: t_CleanRecord. [%#sops'8] postcondition_once_clone'2 self args res
+    = (exists res_state: (). postcondition_mut_clone'2 self args res_state res /\ resolve_clone'2 res_state)
+
+predicate hist_inv_clone'2 [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone'2
+
+function hist_inv_trans_clone'2 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec'2: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone'2 self b)
+    -> ([%#sops'6] hist_inv_clone'2 b c) -> ([%#sops'7] hist_inv_clone'2 self c)
+
+function hist_inv_refl_clone'2 (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec'2: forall self: (). [%#sops'4] hist_inv_clone'2 self self
+
+function postcondition_mut_hist_inv_clone'2 (self: ()) (args: t_CleanRecord) (res_state: ()) (res: t_CleanRecord) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec'2:
+  forall self: (), args: t_CleanRecord, res_state: (), res: t_CleanRecord. ([%#sops'2] postcondition_mut_clone'2 self args res_state res)
+    -> ([%#sops'3] hist_inv_clone'2 self res_state)
+
+function fn_hist_inv_clone'2 (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec'2: forall self: (), res_state: (). [%#sops'1] hist_inv_clone'2 self res_state
+    = (self = res_state)
+
+predicate postcondition_clone'2 [@inline:trivial] (self: ()) (args: t_CleanRecord) (result: t_CleanRecord) =
+  [%#smodel'13] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_clone'2
+
+function fn_once_clone'2 (self: ()) (args: t_CleanRecord) (res: t_CleanRecord) : ()
+
+axiom fn_once_clone_spec'2:
+  forall self: (), args: t_CleanRecord, res: t_CleanRecord. [%#sops'0] postcondition_once_clone'2 self args res
+    = (postcondition_clone'2 self args res /\ resolve_clone'2 self)
+
+function fn_mut_clone'2 (self: ()) (args: t_CleanRecord) (res_state: ()) (res: t_CleanRecord) : ()
+
+axiom fn_mut_clone_spec'2:
+  forall self: (), args: t_CleanRecord, res_state: (), res: t_CleanRecord. [%#sops] postcondition_mut_clone'2 self args res_state res
+    = (postcondition_clone'2 self args res /\ self = res_state)
+
+let rec clone_CleanRecord (self: t_CleanRecord) (return (x: t_CleanRecord)) = any
+  [ return (result: t_CleanRecord) -> (! return {result}) ]
+
+let rec clone_Vec_CleanRecord_Global (self_: t_Vec_CleanRecord_Global) (return (x: t_Vec_CleanRecord_Global)) = any
+  [ return (result: t_Vec_CleanRecord_Global) ->
+  {[@stop_split] [@expl:clone_Vec_CleanRecord_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_CleanRecord_Global self_)
+      = Seq.length (view_Vec_CleanRecord_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_CleanRecord_Global self_)
+      -> postcondition_clone'2 () (Seq.get (view_Vec_CleanRecord_Global self_) i) (Seq.get (view_Vec_CleanRecord_Global result) i))}
+    (! return {result}) ]
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'1] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone'3 [@inline:trivial] (self: ()) (args: t_DurableValue) (result: t_DurableValue) =
+  [%#smodel'14] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_once_clone'3
+
+predicate resolve_clone'3 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone'3
+
+predicate postcondition_mut_clone'3 [@inline:trivial] (self: ()) (args: t_DurableValue) (result_state: ()) (result: t_DurableValue) =
+  [%#smodel'14] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_mut_clone'3
+
+function fn_mut_once_clone'3 (self: ()) (args: t_DurableValue) (res: t_DurableValue) : ()
+
+axiom fn_mut_once_clone_spec'3:
+  forall self: (), args: t_DurableValue, res: t_DurableValue. [%#sops'8] postcondition_once_clone'3 self args res
+    = (exists res_state: (). postcondition_mut_clone'3 self args res_state res /\ resolve_clone'3 res_state)
+
+predicate hist_inv_clone'3 [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone'3
+
+function hist_inv_trans_clone'3 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec'3: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone'3 self b)
+    -> ([%#sops'6] hist_inv_clone'3 b c) -> ([%#sops'7] hist_inv_clone'3 self c)
+
+function hist_inv_refl_clone'3 (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec'3: forall self: (). [%#sops'4] hist_inv_clone'3 self self
+
+function postcondition_mut_hist_inv_clone'3 (self: ()) (args: t_DurableValue) (res_state: ()) (res: t_DurableValue) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec'3:
+  forall self: (), args: t_DurableValue, res_state: (), res: t_DurableValue. ([%#sops'2] postcondition_mut_clone'3 self args res_state res)
+    -> ([%#sops'3] hist_inv_clone'3 self res_state)
+
+function fn_hist_inv_clone'3 (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec'3: forall self: (), res_state: (). [%#sops'1] hist_inv_clone'3 self res_state
+    = (self = res_state)
+
+predicate postcondition_clone'3 [@inline:trivial] (self: ()) (args: t_DurableValue) (result: t_DurableValue) =
+  [%#smodel'14] let self'0 = args in true
+
+meta "rewrite_def" predicate postcondition_clone'3
+
+function fn_once_clone'3 (self: ()) (args: t_DurableValue) (res: t_DurableValue) : ()
+
+axiom fn_once_clone_spec'3:
+  forall self: (), args: t_DurableValue, res: t_DurableValue. [%#sops'0] postcondition_once_clone'3 self args res
+    = (postcondition_clone'3 self args res /\ resolve_clone'3 self)
+
+function fn_mut_clone'3 (self: ()) (args: t_DurableValue) (res_state: ()) (res: t_DurableValue) : ()
+
+axiom fn_mut_clone_spec'3:
+  forall self: (), args: t_DurableValue, res_state: (), res: t_DurableValue. [%#sops] postcondition_mut_clone'3 self args res_state res
+    = (postcondition_clone'3 self args res /\ self = res_state)
+
+let rec clone_DurableValue (self: t_DurableValue) (return (x: t_DurableValue)) = any
+  [ return (result: t_DurableValue) -> (! return {result}) ]
+
+let rec clone_Vec_DurableValue_Global (self_: t_Vec_DurableValue_Global) (return (x: t_Vec_DurableValue_Global)) = any
+  [ return (result: t_Vec_DurableValue_Global) ->
+  {[@stop_split] [@expl:clone_Vec_DurableValue_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_DurableValue_Global self_)
+      = Seq.length (view_Vec_DurableValue_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_DurableValue_Global self_)
+      -> postcondition_clone'3 () (Seq.get (view_Vec_DurableValue_Global self_) i) (Seq.get (view_Vec_DurableValue_Global result) i))}
+    (! return {result}) ]
+
+function view_Vec_bool_Global (self: t_Vec_bool_Global) : Seq.seq bool
+
+axiom view_Vec_bool_Global_spec: forall self: t_Vec_bool_Global. [%#svec'1] Seq.length (view_Vec_bool_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate postcondition_once_clone'4 [@inline:trivial] (self: ()) (args: bool) (result: bool) =
+  let self_ = args in [%#sclone] result = self_
+
+meta "rewrite_def" predicate postcondition_once_clone'4
+
+predicate resolve_clone'4 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_clone'4
+
+predicate postcondition_mut_clone'4 [@inline:trivial] (self: ()) (args: bool) (result_state: ()) (result: bool) =
+  let self_ = args in [%#sclone] result = self_
+
+meta "rewrite_def" predicate postcondition_mut_clone'4
+
+function fn_mut_once_clone'4 (self: ()) (args: bool) (res: bool) : ()
+
+axiom fn_mut_once_clone_spec'4:
+  forall self: (), args: bool, res: bool. [%#sops'8] postcondition_once_clone'4 self args res
+    = (exists res_state: (). postcondition_mut_clone'4 self args res_state res /\ resolve_clone'4 res_state)
+
+predicate hist_inv_clone'4 [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_clone'4
+
+function hist_inv_trans_clone'4 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_clone_spec'4: forall self: (), b: (), c: (). ([%#sops'5] hist_inv_clone'4 self b)
+    -> ([%#sops'6] hist_inv_clone'4 b c) -> ([%#sops'7] hist_inv_clone'4 self c)
+
+function hist_inv_refl_clone'4 (self: ()) : ()
+
+axiom hist_inv_refl_clone_spec'4: forall self: (). [%#sops'4] hist_inv_clone'4 self self
+
+function postcondition_mut_hist_inv_clone'4 (self: ()) (args: bool) (res_state: ()) (res: bool) : ()
+
+axiom postcondition_mut_hist_inv_clone_spec'4:
+  forall self: (), args: bool, res_state: (), res: bool. ([%#sops'2] postcondition_mut_clone'4 self args res_state res)
+    -> ([%#sops'3] hist_inv_clone'4 self res_state)
+
+function fn_hist_inv_clone'4 (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_clone_spec'4: forall self: (), res_state: (). [%#sops'1] hist_inv_clone'4 self res_state
+    = (self = res_state)
+
+predicate postcondition_clone'4 [@inline:trivial] (self: ()) (args: bool) (result: bool) =
+  let self_ = args in [%#sclone] result = self_
+
+meta "rewrite_def" predicate postcondition_clone'4
+
+function fn_once_clone'4 (self: ()) (args: bool) (res: bool) : ()
+
+axiom fn_once_clone_spec'4: forall self: (), args: bool, res: bool. [%#sops'0] postcondition_once_clone'4 self args res
+    = (postcondition_clone'4 self args res /\ resolve_clone'4 self)
+
+function fn_mut_clone'4 (self: ()) (args: bool) (res_state: ()) (res: bool) : ()
+
+axiom fn_mut_clone_spec'4:
+  forall self: (), args: bool, res_state: (), res: bool. [%#sops] postcondition_mut_clone'4 self args res_state res
+    = (postcondition_clone'4 self args res /\ self = res_state)
+
+let rec clone_bool (self_: bool) (return (x: bool)) = any
+  [ return (result: bool) -> {[@stop_split] [@expl:clone ensures] [%#sclone] result = self_} (! return {result}) ]
+
+let rec clone_Vec_bool_Global (self_: t_Vec_bool_Global) (return (x: t_Vec_bool_Global)) = any
+  [ return (result: t_Vec_bool_Global) ->
+  {[@stop_split] [@expl:clone_Vec_bool_Global ensures] ([@stop_split] [@expl:clone ensures #0] [%#svec] Seq.length (view_Vec_bool_Global self_)
+      = Seq.length (view_Vec_bool_Global result))
+    /\ ([@stop_split] [@expl:clone ensures #1] [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_bool_Global self_)
+      -> postcondition_clone'4 () (Seq.get (view_Vec_bool_Global self_) i) (Seq.get (view_Vec_bool_Global result) i))}
+    (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec clone_ModelState [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 106 9 106 14] (self: t_ModelState)
+  (return (x: t_ModelState)) = (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_4 <- self.visible ] s1
+    | s1 = clone_Vec_VisibleRef_Global [%#smodel] {_4} (fun (_x: t_Vec_VisibleRef_Global) -> [ &_2 <- _x ] s2)
+    | s2 = [ &_7 <- self.write_store ] s3
+    | s3 = clone_Vec_DirtyRecord_Global [%#smodel'0] {_7} (fun (_x: t_Vec_DirtyRecord_Global) -> [ &_5 <- _x ] s4)
+    | s4 = [ &_10 <- self.write_hist ] s5
+    | s5 = clone_Vec_DirtyRecord_Global [%#smodel'1] {_10} (fun (_x: t_Vec_DirtyRecord_Global) -> [ &_8 <- _x ] s6)
+    | s6 = [ &_13 <- self.dirty_q ] s7
+    | s7 = clone_Vec_usize_Global [%#smodel'2] {_13} (fun (_x: t_Vec_usize_Global) -> [ &_11 <- _x ] s8)
+    | s8 = [ &_16 <- self.cache_store ] s9
+    | s9 = clone_Vec_CleanRecord_Global [%#smodel'3] {_16} (fun (_x: t_Vec_CleanRecord_Global) -> [ &_14 <- _x ] s10)
+    | s10 = [ &_19 <- self.durable ] s11
+    | s11 = clone_Vec_DurableValue_Global [%#smodel'4] {_19} (fun (_x: t_Vec_DurableValue_Global) -> [ &_17 <- _x ] s12)
+    | s12 = [ &_22 <- self.flushed ] s13
+    | s13 = clone_Vec_usize_Global [%#smodel'5] {_22} (fun (_x: t_Vec_usize_Global) -> [ &_20 <- _x ] s14)
+    | s14 = [ &_25 <- self.created_dirty ] s15
+    | s15 = clone_Vec_bool_Global [%#smodel'6] {_25} (fun (_x: t_Vec_bool_Global) -> [ &_23 <- _x ] s16)
+    | s16 = [ &_28 <- self.next_write ] s17
+    | s17 = clone_usize [%#smodel'7] {_28} (fun (_x: UInt64.t) -> [ &_26 <- _x ] s18)
+    | s18 = [ &_31 <- self.next_cache ] s19
+    | s19 = clone_usize [%#smodel'8] {_31} (fun (_x: UInt64.t) -> [ &_29 <- _x ] s20)
+    | s20 = [ &_34 <- self.crashed ] s21
+    | s21 = clone_bool [%#smodel'9] {_34} (fun (_x: bool) -> [ &_32 <- _x ] s22)
+    | s22 = [ &_37 <- self.bad_read ] s23
+    | s23 = clone_bool [%#smodel'10] {_37} (fun (_x: bool) -> [ &_35 <- _x ] s24)
+    | s24 = [ &_ret <- { visible = _2;
+                         write_store = _5;
+                         write_hist = _8;
+                         dirty_q = _11;
+                         cache_store = _14;
+                         durable = _17;
+                         flushed = _20;
+                         created_dirty = _23;
+                         next_write = _26;
+                         next_cache = _29;
+                         crashed = _32;
+                         bad_read = _35 } ] s25
+    | s25 = return {_ret} ] ]
+  [ & _ret: t_ModelState = Any.any_l ()
+  | & self: t_ModelState = self
+  | & _2: t_Vec_VisibleRef_Global = Any.any_l ()
+  | & _4: t_Vec_VisibleRef_Global = Any.any_l ()
+  | & _5: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _7: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _8: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _10: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _11: t_Vec_usize_Global = Any.any_l ()
+  | & _13: t_Vec_usize_Global = Any.any_l ()
+  | & _14: t_Vec_CleanRecord_Global = Any.any_l ()
+  | & _16: t_Vec_CleanRecord_Global = Any.any_l ()
+  | & _17: t_Vec_DurableValue_Global = Any.any_l ()
+  | & _19: t_Vec_DurableValue_Global = Any.any_l ()
+  | & _20: t_Vec_usize_Global = Any.any_l ()
+  | & _22: t_Vec_usize_Global = Any.any_l ()
+  | & _23: t_Vec_bool_Global = Any.any_l ()
+  | & _25: t_Vec_bool_Global = Any.any_l ()
+  | & _26: UInt64.t = Any.any_l ()
+  | & _28: UInt64.t = Any.any_l ()
+  | & _29: UInt64.t = Any.any_l ()
+  | & _31: UInt64.t = Any.any_l ()
+  | & _32: bool = Any.any_l ()
+  | & _34: bool = Any.any_l ()
+  | & _35: bool = Any.any_l ()
+  | & _37: bool = Any.any_l () ]) [ return (result: t_ModelState) -> (! return {result}) ]

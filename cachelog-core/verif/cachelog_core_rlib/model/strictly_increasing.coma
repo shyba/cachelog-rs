@@ -1,0 +1,68 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 845 0 845 47 *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 846 20 846 21
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 847 18 847 29
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 848 25 848 26
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 848 17 848 26
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 848 11 848 27
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 848 31 848 43
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 851 17 851 18
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 851 8 851 18
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 849 19 849 24
+let%span smodel'8 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 853 4 853 8
+let%span sslice = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 288 18 288 40
+
+use creusot.int.UInt64
+use creusot.slice.Slice64
+use seq.Seq
+use creusot.prelude.Any
+
+let rec len_usize (self_: Slice64.slice UInt64.t) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#sslice] Seq.length (Slice64.view self_)
+    = UInt64.t'int result}
+    (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec strictly_increasing [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 845 0 845 47]
+  (items: Slice64.slice UInt64.t) (return (x: bool)) = (! bb0
+  [ bb0 = s0 [ s0 = [ &index <- [%#smodel] (1: UInt64.t) ] s1 | s1 = bb2 ]
+  | bb2 = bb2
+    [ bb2 = (! s0
+      [ s0 = len_usize [%#smodel'0] {items} (fun (_x: UInt64.t) -> [ &_7 <- _x ] s1)
+      | s1 = [ &_5 <- UInt64.lt index _7 ] s2
+      | s2 = any [ br0 -> {_5 = false} (! bb9) | br1 -> {_5} (! bb4) ] ])
+      [ bb4 = s0
+        [ s0 = UInt64.sub [%#smodel'2] {index} {[%#smodel'1] (1: UInt64.t)} (fun (_x: UInt64.t) -> [ &_12 <- _x ] s1)
+        | s1 = [ &_14 <- Slice64.length items ] s2
+        | s2 = [ &_15 <- UInt64.lt _12 _14 ] s3
+        | s3 = {[@expl:index in bounds] [%#smodel'3] _15} s4
+        | s4 = Slice64.get <UInt64.t> {items} {_12} (fun (r: UInt64.t) -> [ &_11 <- r ] s5)
+        | s5 = [ &_17 <- index ] s6
+        | s6 = [ &_18 <- Slice64.length items ] s7
+        | s7 = [ &_19 <- UInt64.lt _17 _18 ] s8
+        | s8 = {[@expl:index in bounds] [%#smodel'4] _19} s9
+        | s9 = Slice64.get <UInt64.t> {items} {_17} (fun (r: UInt64.t) -> [ &_16 <- r ] s10)
+        | s10 = [ &_10 <- UInt64.ge _11 _16 ] s11
+        | s11 = any [ br0 -> {_10 = false} (! bb8) | br1 -> {_10} (! bb7) ] ]
+      | bb8 = s0
+        [ s0 = UInt64.add [%#smodel'6] {index} {[%#smodel'5] (1: UInt64.t)} (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb2 ] ] ]
+  | bb7 = s0 [ s0 = [ &_ret <- [%#smodel'7] false ] s1 | s1 = return {_ret} ]
+  | bb9 = s0 [ s0 = [ &_ret <- [%#smodel'8] true ] s1 | s1 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l ()
+  | & items: Slice64.slice UInt64.t = items
+  | & index: UInt64.t = Any.any_l ()
+  | & _5: bool = Any.any_l ()
+  | & _7: UInt64.t = Any.any_l ()
+  | & _10: bool = Any.any_l ()
+  | & _11: UInt64.t = Any.any_l ()
+  | & _12: UInt64.t = Any.any_l ()
+  | & _14: UInt64.t = Any.any_l ()
+  | & _15: bool = Any.any_l ()
+  | & _16: UInt64.t = Any.any_l ()
+  | & _17: UInt64.t = Any.any_l ()
+  | & _18: UInt64.t = Any.any_l ()
+  | & _19: bool = Any.any_l () ]) [ return (result: bool) -> (! return {result}) ]

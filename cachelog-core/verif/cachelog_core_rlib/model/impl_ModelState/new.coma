@@ -1,0 +1,1027 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 277 4 277 43 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 280 26 280 27
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 280 25 281 47
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 280 25 282 26
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 283 25 283 26
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 283 24 284 47
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 283 24 285 26
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 286 21 286 31
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 287 26 287 27
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 287 25 288 47
+let%span smodel'8 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 287 25 289 26
+let%span smodel'9 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 290 22 290 23
+let%span smodel'10 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 290 21 291 48
+let%span smodel'11 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 290 21 292 26
+let%span smodel'12 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 293 21 293 31
+let%span smodel'13 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 294 32 294 37
+let%span smodel'14 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 295 24 295 25
+let%span smodel'15 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 296 24 296 25
+let%span smodel'16 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 297 21 297 26
+let%span smodel'17 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 298 22 298 27
+let%span smodel'18 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 281 25 281 46
+let%span smodel'19 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 284 25 284 46
+let%span smodel'20 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 288 25 288 46
+let%span smodel'21 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 291 25 291 47
+let%span smodel'22 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 281 21 281 24
+let%span smodel'23 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 284 21 284 24
+let%span smodel'24 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 288 21 288 24
+let%span smodel'25 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 291 21 291 24
+let%span snum = "/tmp/creusot-install-check/creusot-std/src/std/num.rs" 25 28 25 33
+let%span sops = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 126 15 126 59
+let%span sops'0 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 127 14 127 38
+let%span sops'1 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 132 14 132 33
+let%span sops'2 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 137 15 137 31
+let%span sops'3 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 138 15 138 28
+let%span sops'4 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 139 14 139 30
+let%span sops'5 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 144 14 145 104
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 96 22 96 41
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 97 22 97 70
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 104 18 104 36
+let%span svec'2 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'3 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span svec'4 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 299 20 299 32
+let%span siter = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 128 27 129 52
+let%span siter'0 = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 130 27 130 60
+let%span siter'1 = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 131 27 131 67
+let%span siter'2 = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 132 26 132 69
+let%span siter'3 = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 174 30 174 34
+let%span siter'4 = "/tmp/creusot-install-check/creusot-std/src/std/iter.rs" 172 26 173 119
+let%span srange = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 18 12 22 70
+let%span srange'0 = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 27 14 27 47
+let%span srange'1 = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 31 15 31 32
+let%span srange'2 = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 32 15 32 32
+let%span srange'3 = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 33 14 33 42
+let%span srange'4 = "/tmp/creusot-install-check/creusot-std/src/std/iter/range.rs" 11 12 11 77
+let%span smap = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 165 8 166 92
+let%span smap'0 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 152 8 158 37
+let%span smap'1 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 56 12 57 47
+let%span smap'2 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 64 12 73 104
+let%span smap'3 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 142 8 145 35
+let%span smap'4 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 78 14 78 47
+let%span smap'5 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 82 15 82 32
+let%span smap'6 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 83 15 83 32
+let%span smap'7 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 84 14 84 42
+let%span smap'8 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 41 14 41 61
+let%span smap'9 = "/tmp/creusot-install-check/creusot-std/src/std/iter/map.rs" 29 8 29 52
+
+use creusot.int.UInt64
+use seq.Seq
+use creusot.prelude.MutBorrow
+use creusot.prelude.Any
+use int.Int
+
+type t_VisibleRef = None | Dirty UInt64.t | Clean UInt64.t
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+type t_Vec_VisibleRef_Global
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_VisibleRef_Global (self: t_Vec_VisibleRef_Global) : Seq.seq t_VisibleRef
+
+axiom view_Vec_VisibleRef_Global_spec:
+  forall self: t_Vec_VisibleRef_Global. [%#svec'2] Seq.length (view_Vec_VisibleRef_Global self)
+    <= UInt64.t'int const_MAX
+
+function index_Vec_VisibleRef_Global [@inline:trivial] (self: t_Vec_VisibleRef_Global) (ix: int) : t_VisibleRef =
+  [%#svec'3] Seq.get (view_Vec_VisibleRef_Global self) ix
+
+meta "rewrite_def" function index_Vec_VisibleRef_Global
+
+let rec from_elem_VisibleRef (elem: t_VisibleRef) (n: UInt64.t) (return (x: t_Vec_VisibleRef_Global)) = any
+  [ return (result: t_Vec_VisibleRef_Global) ->
+  {[@stop_split] [@expl:from_elem_VisibleRef ensures] ([@stop_split] [@expl:from_elem ensures #0] [%#svec] Seq.length (view_Vec_VisibleRef_Global result)
+      = UInt64.t'int n)
+    /\ ([@stop_split] [@expl:from_elem ensures #1] [%#svec'0] forall i: int. 0 <= i /\ i < UInt64.t'int n
+      -> index_Vec_VisibleRef_Global result i = elem)}
+    (! return {result}) ]
+
+type t_Range_usize = { start: UInt64.t; end': UInt64.t }
+
+predicate resolve_refmut_closure0 [@inline:trivial] (_1: MutBorrow.t ()) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_closure0
+
+type t_Option_usize = None'0 | Some'0 UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+let rec absent (return (x: t_DirtyRecord)) = any [ return (result: t_DirtyRecord) -> (! return {result}) ]
+
+predicate resolve_closure0 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_closure0
+
+predicate hist_inv_closure0 [@inline:trivial] (self: ()) (result_state: ()) = [%#smodel'22] true
+
+meta "rewrite_def" predicate hist_inv_closure0
+
+let rec closure0 [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 281 21 281 24] [@coma:extspec]
+  (self: MutBorrow.t ()) (_0: UInt64.t) (return (x: t_DirtyRecord)) = bb0
+  [ bb0 = s0
+    [ s0 = -{resolve_refmut_closure0 self}- s1
+    | s1 = absent [%#smodel'18] (fun (_x: t_DirtyRecord) -> [ &_ret <- _x ] s2)
+    | s2 = return {_ret} ] ] [ & _ret: t_DirtyRecord = Any.any_l () | & self: MutBorrow.t () = self ]
+  [ return (result: t_DirtyRecord) ->
+  {[@stop_split] [@expl:closure hist_inv post] hist_inv_closure0 self.current self.final}
+    return {result} ]
+
+meta "rewrite_def" predicate closure0'pre
+
+meta "rewrite_def" predicate closure0'post'return
+
+predicate postcondition_once_closure0 [@inline:trivial] (self: ()) (args: UInt64.t) (result: t_DirtyRecord) =
+  [%#smodel'22] let _0 = args in exists e: (). exists bor_self: MutBorrow.t (). bor_self.current = self
+      /\ bor_self.final = e /\ closure0'post'return bor_self _0 result /\ hist_inv_closure0 self e
+
+meta "rewrite_def" predicate postcondition_once_closure0
+
+predicate postcondition_mut_closure0 [@inline:trivial] (self: ()) (args: UInt64.t) (result_state: ()) (result: t_DirtyRecord) =
+  [%#smodel'22] let _0 = args in exists bor_self: MutBorrow.t (). bor_self.current = self
+    /\ bor_self.final = result_state /\ closure0'post'return bor_self _0 result /\ hist_inv_closure0 self result_state
+
+meta "rewrite_def" predicate postcondition_mut_closure0
+
+function fn_mut_once_closure0 (self: ()) (args: UInt64.t) (res: t_DirtyRecord) : ()
+
+axiom fn_mut_once_closure0_spec:
+  forall self: (), args: UInt64.t, res: t_DirtyRecord. [%#sops'5] postcondition_once_closure0 self args res
+    = (exists res_state: (). postcondition_mut_closure0 self args res_state res /\ resolve_closure0 res_state)
+
+function hist_inv_trans_closure0 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_closure0_spec: forall self: (), b: (), c: (). ([%#sops'2] hist_inv_closure0 self b)
+    -> ([%#sops'3] hist_inv_closure0 b c) -> ([%#sops'4] hist_inv_closure0 self c)
+
+function hist_inv_refl_closure0 (self: ()) : ()
+
+axiom hist_inv_refl_closure0_spec: forall self: (). [%#sops'1] hist_inv_closure0 self self
+
+function postcondition_mut_hist_inv_closure0 (self: ()) (args: UInt64.t) (res_state: ()) (res: t_DirtyRecord) : ()
+
+axiom postcondition_mut_hist_inv_closure0_spec:
+  forall self: (), args: UInt64.t, res_state: (), res: t_DirtyRecord. ([%#sops] postcondition_mut_closure0 self args res_state res)
+    -> ([%#sops'0] hist_inv_closure0 self res_state)
+
+type t_Map_Range_usize_closure0
+
+function deep_model_usize [@inline:trivial] (self: UInt64.t) : int = [%#snum] UInt64.t'int self
+
+meta "rewrite_def" function deep_model_usize
+
+predicate produces_Range_usize (self: t_Range_usize) (visited: Seq.seq UInt64.t) (o: t_Range_usize) =
+  [%#srange] self.end' = o.end'
+  /\ deep_model_usize self.start <= deep_model_usize o.start
+  /\ (Seq.length visited > 0 -> deep_model_usize o.start <= deep_model_usize o.end')
+  /\ Seq.length visited = deep_model_usize o.start - deep_model_usize self.start
+  /\ (forall i: int. 0 <= i /\ i < Seq.length visited
+    -> deep_model_usize (Seq.get visited i) = deep_model_usize self.start + i)
+
+function produces_trans_Range_usize (a: t_Range_usize) (ab: Seq.seq UInt64.t) (b: t_Range_usize) (bc: Seq.seq UInt64.t) (c: t_Range_usize) : ()
+
+axiom produces_trans_Range_usize_spec:
+  forall a: t_Range_usize, ab: Seq.seq UInt64.t, b: t_Range_usize, bc: Seq.seq UInt64.t, c: t_Range_usize. ([%#srange'1] produces_Range_usize a ab b)
+    -> ([%#srange'2] produces_Range_usize b bc c) -> ([%#srange'3] produces_Range_usize a (Seq.(++) ab bc) c)
+
+function produces_refl_Range_usize (self: t_Range_usize) : ()
+
+axiom produces_refl_Range_usize_spec:
+  forall self: t_Range_usize. [%#srange'0] produces_Range_usize self (Seq.empty: Seq.seq UInt64.t) self
+
+predicate inv_usize [@inline:trivial] (_1: UInt64.t) = true
+
+meta "rewrite_def" predicate inv_usize
+
+predicate precondition_closure0 [@inline:trivial] (self: ()) (args: UInt64.t) =
+  [%#smodel'22] let _0 = args in forall bor_self: MutBorrow.t (). bor_self.current = self -> closure0'pre bor_self _0
+
+meta "rewrite_def" predicate precondition_closure0
+
+predicate resolve_refmut_Range_usize [@inline:trivial] (_1: MutBorrow.t t_Range_usize) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_Range_usize
+
+predicate completed_Range_usize (self: MutBorrow.t t_Range_usize) =
+  [%#srange'4] resolve_refmut_Range_usize self
+  /\ deep_model_usize self.current.start >= deep_model_usize self.current.end'
+
+predicate next_precondition_Range_usize [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'3] forall e: UInt64.t, i: t_Range_usize [produces_Range_usize iter (Seq.singleton e) i]. inv_usize e
+      /\ produces_Range_usize iter (Seq.singleton e) i -> precondition_closure0 func e
+
+meta "rewrite_def" predicate next_precondition_Range_usize
+
+predicate inv_Seq_usize [@inline:trivial] (_1: Seq.seq UInt64.t) = true
+
+meta "rewrite_def" predicate inv_Seq_usize
+
+predicate inv_refmut_closure0 [@inline:trivial] (_1: MutBorrow.t ()) = true
+
+meta "rewrite_def" predicate inv_refmut_closure0
+
+predicate preservation_Range_usize [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'0] forall s: Seq.seq UInt64.t, e1: UInt64.t, e2: UInt64.t, f: MutBorrow.t (), b: t_DirtyRecord, i: t_Range_usize [produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i, postcondition_mut_closure0 f.current e1 f.final b]. hist_inv_closure0 func f.current
+    -> inv_Seq_usize s /\ inv_usize e1 /\ inv_usize e2 /\ inv_refmut_closure0 f
+    -> produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i
+    -> postcondition_mut_closure0 f.current e1 f.final b -> precondition_closure0 f.final e2
+
+meta "rewrite_def" predicate preservation_Range_usize
+
+predicate reinitialize_Range_usize [@inline:trivial] =
+  [%#smap] forall iter: MutBorrow.t t_Range_usize, func: (). completed_Range_usize iter
+    -> next_precondition_Range_usize iter.final func /\ preservation_Range_usize iter.final func
+
+meta "rewrite_def" predicate reinitialize_Range_usize
+
+predicate inv_Range_usize [@inline:trivial] (_1: t_Range_usize) = true
+
+meta "rewrite_def" predicate inv_Range_usize
+
+function iter_Map_Range_usize_closure0 (self: t_Map_Range_usize_closure0) : t_Range_usize
+
+predicate inv_closure0 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate inv_closure0
+
+function func_Map_Range_usize_closure0 (self: t_Map_Range_usize_closure0) : ()
+
+predicate invariant_Map_Range_usize_closure0 (self: t_Map_Range_usize_closure0)
+
+axiom invariant_Map_Range_usize_closure0_spec:
+  forall self: t_Map_Range_usize_closure0. [%#smap'8] invariant_Map_Range_usize_closure0 self
+    -> inv_Range_usize (iter_Map_Range_usize_closure0 self) /\ inv_closure0 (func_Map_Range_usize_closure0 self)
+
+predicate inv_Map_Range_usize_closure0 (_1: t_Map_Range_usize_closure0)
+
+axiom inv_axiom: forall x: t_Map_Range_usize_closure0 [inv_Map_Range_usize_closure0 x]. inv_Map_Range_usize_closure0 x
+    -> invariant_Map_Range_usize_closure0 x
+
+let rec map_Range_usize (self_: t_Range_usize) (f: ()) (return (x: t_Map_Range_usize_closure0)) =
+  {[@stop_split] [@expl:map_Range_usize requires] ([@stop_split] [@expl:map requires #0] [%#siter] forall e: UInt64.t, i2: t_Range_usize. produces_Range_usize self_ (Seq.singleton e) i2
+        /\ inv_usize e -> precondition_closure0 f e)
+  /\ ([@stop_split] [@expl:map requires #1] [%#siter'0] reinitialize_Range_usize)
+  /\ ([@stop_split] [@expl:map requires #2] [%#siter'1] preservation_Range_usize self_ f)}
+  any
+  [ return (result: t_Map_Range_usize_closure0) ->
+  {[@stop_split] [@expl:map_Range_usize ensures] ([@stop_split] [@expl:map result type invariant] inv_Map_Range_usize_closure0 result)
+    /\ ([@stop_split] [@expl:map ensures] [%#siter'2] iter_Map_Range_usize_closure0 result = self_
+    /\ func_Map_Range_usize_closure0 result = f)}
+    (! return {result}) ]
+
+type t_Vec_DirtyRecord_Global
+
+predicate resolve_Range_usize [@inline:trivial] (_1: t_Range_usize) = true
+
+meta "rewrite_def" predicate resolve_Range_usize
+
+predicate resolve_Map_Range_usize_closure0 [@inline:trivial] (self: t_Map_Range_usize_closure0) =
+  [%#smap'9] resolve_Range_usize (iter_Map_Range_usize_closure0 self)
+  /\ resolve_closure0 (func_Map_Range_usize_closure0 self)
+
+meta "rewrite_def" predicate resolve_Map_Range_usize_closure0
+
+predicate resolve_Map_Range_usize_closure0'0 (_1: t_Map_Range_usize_closure0)
+
+axiom resolve_axiom:
+  forall x: t_Map_Range_usize_closure0 [resolve_Map_Range_usize_closure0'0 x]. resolve_Map_Range_usize_closure0'0 x
+    -> resolve_Map_Range_usize_closure0 x
+
+predicate produces_Map_Range_usize_closure0 [@inline:trivial] (self: t_Map_Range_usize_closure0) (visited: Seq.seq t_DirtyRecord) (succ: t_Map_Range_usize_closure0) =
+  [%#smap'2] hist_inv_closure0 (func_Map_Range_usize_closure0 self) (func_Map_Range_usize_closure0 succ)
+  /\ (exists fs: Seq.seq (MutBorrow.t ()). Seq.length fs = Seq.length visited
+    /\ (exists s: Seq.seq UInt64.t [produces_Range_usize (iter_Map_Range_usize_closure0 self) s (iter_Map_Range_usize_closure0 succ)]. Seq.length s
+        = Seq.length visited
+      /\ produces_Range_usize (iter_Map_Range_usize_closure0 self) s (iter_Map_Range_usize_closure0 succ)
+      /\ (forall i: int. 1 <= i /\ i < Seq.length fs -> (Seq.get fs (i - 1)).final = (Seq.get fs i).current)
+      /\ (if Seq.length visited = 0 then
+          func_Map_Range_usize_closure0 self = func_Map_Range_usize_closure0 succ
+        else
+          (Seq.get fs 0).current = func_Map_Range_usize_closure0 self
+          /\ (Seq.get fs (Seq.length visited - 1)).final = func_Map_Range_usize_closure0 succ
+        )
+      /\ (forall i: int. 0 <= i /\ i < Seq.length visited
+        -> hist_inv_closure0 (func_Map_Range_usize_closure0 self) (Seq.get fs i).current
+        /\ postcondition_mut_closure0 (Seq.get fs i).current (Seq.get s i) (Seq.get fs i).final (Seq.get visited i))))
+
+meta "rewrite_def" predicate produces_Map_Range_usize_closure0
+
+function produces_trans_Map_Range_usize_closure0 (a: t_Map_Range_usize_closure0) (ab: Seq.seq t_DirtyRecord) (b: t_Map_Range_usize_closure0) (bc: Seq.seq t_DirtyRecord) (c: t_Map_Range_usize_closure0) : ()
+
+axiom produces_trans_Map_Range_usize_closure0_spec:
+  forall a: t_Map_Range_usize_closure0, ab: Seq.seq t_DirtyRecord, b: t_Map_Range_usize_closure0, bc: Seq.seq t_DirtyRecord, c: t_Map_Range_usize_closure0. ([%#smap'5] produces_Map_Range_usize_closure0 a ab b)
+    -> ([%#smap'6] produces_Map_Range_usize_closure0 b bc c)
+    -> ([%#smap'7] produces_Map_Range_usize_closure0 a (Seq.(++) ab bc) c)
+
+function produces_refl_Map_Range_usize_closure0 (self: t_Map_Range_usize_closure0) : ()
+
+axiom produces_refl_Map_Range_usize_closure0_spec:
+  forall self: t_Map_Range_usize_closure0. [%#smap'4] produces_Map_Range_usize_closure0 self (Seq.empty: Seq.seq t_DirtyRecord) self
+
+predicate completed_Map_Range_usize_closure0 (self: MutBorrow.t t_Map_Range_usize_closure0) =
+  [%#smap'1] (exists inner: MutBorrow.t t_Range_usize. inner.current = iter_Map_Range_usize_closure0 self.current
+      /\ inner.final = iter_Map_Range_usize_closure0 self.final /\ completed_Range_usize inner)
+  /\ func_Map_Range_usize_closure0 self.current = func_Map_Range_usize_closure0 self.final
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec'2] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate from_iter_post_Vec_DirtyRecord_Global (prod: Seq.seq t_DirtyRecord) (res: t_Vec_DirtyRecord_Global) =
+  [%#svec'4] prod = view_Vec_DirtyRecord_Global res
+
+let rec collect_Map_Range_usize_closure0 (self_: t_Map_Range_usize_closure0) (return (x: t_Vec_DirtyRecord_Global)) =
+  {[@stop_split] [@expl:collect 'self_' type invariant] [%#siter'3] inv_Map_Range_usize_closure0 self_}
+  any
+  [ return (result: t_Vec_DirtyRecord_Global) ->
+  {[@stop_split] [@expl:collect ensures] [%#siter'4] exists done': MutBorrow.t t_Map_Range_usize_closure0, prod: Seq.seq t_DirtyRecord. resolve_Map_Range_usize_closure0'0 done'.final
+      /\ completed_Map_Range_usize_closure0 done'
+      /\ produces_Map_Range_usize_closure0 self_ prod done'.current
+      /\ from_iter_post_Vec_DirtyRecord_Global prod result}
+    (! return {result}) ]
+
+predicate resolve_refmut_closure1 [@inline:trivial] (_1: MutBorrow.t ()) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_closure1
+
+predicate resolve_closure1 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_closure1
+
+predicate hist_inv_closure1 [@inline:trivial] (self: ()) (result_state: ()) = [%#smodel'23] true
+
+meta "rewrite_def" predicate hist_inv_closure1
+
+let rec closure1 [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 284 21 284 24] [@coma:extspec]
+  (self: MutBorrow.t ()) (_0: UInt64.t) (return (x: t_DirtyRecord)) = bb0
+  [ bb0 = s0
+    [ s0 = -{resolve_refmut_closure1 self}- s1
+    | s1 = absent [%#smodel'19] (fun (_x: t_DirtyRecord) -> [ &_ret <- _x ] s2)
+    | s2 = return {_ret} ] ] [ & _ret: t_DirtyRecord = Any.any_l () | & self: MutBorrow.t () = self ]
+  [ return (result: t_DirtyRecord) ->
+  {[@stop_split] [@expl:closure hist_inv post] hist_inv_closure1 self.current self.final}
+    return {result} ]
+
+meta "rewrite_def" predicate closure1'pre
+
+meta "rewrite_def" predicate closure1'post'return
+
+predicate postcondition_once_closure1 [@inline:trivial] (self: ()) (args: UInt64.t) (result: t_DirtyRecord) =
+  [%#smodel'23] let _0 = args in exists e: (). exists bor_self: MutBorrow.t (). bor_self.current = self
+      /\ bor_self.final = e /\ closure1'post'return bor_self _0 result /\ hist_inv_closure1 self e
+
+meta "rewrite_def" predicate postcondition_once_closure1
+
+predicate postcondition_mut_closure1 [@inline:trivial] (self: ()) (args: UInt64.t) (result_state: ()) (result: t_DirtyRecord) =
+  [%#smodel'23] let _0 = args in exists bor_self: MutBorrow.t (). bor_self.current = self
+    /\ bor_self.final = result_state /\ closure1'post'return bor_self _0 result /\ hist_inv_closure1 self result_state
+
+meta "rewrite_def" predicate postcondition_mut_closure1
+
+function fn_mut_once_closure1 (self: ()) (args: UInt64.t) (res: t_DirtyRecord) : ()
+
+axiom fn_mut_once_closure1_spec:
+  forall self: (), args: UInt64.t, res: t_DirtyRecord. [%#sops'5] postcondition_once_closure1 self args res
+    = (exists res_state: (). postcondition_mut_closure1 self args res_state res /\ resolve_closure1 res_state)
+
+function hist_inv_trans_closure1 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_closure1_spec: forall self: (), b: (), c: (). ([%#sops'2] hist_inv_closure1 self b)
+    -> ([%#sops'3] hist_inv_closure1 b c) -> ([%#sops'4] hist_inv_closure1 self c)
+
+function hist_inv_refl_closure1 (self: ()) : ()
+
+axiom hist_inv_refl_closure1_spec: forall self: (). [%#sops'1] hist_inv_closure1 self self
+
+function postcondition_mut_hist_inv_closure1 (self: ()) (args: UInt64.t) (res_state: ()) (res: t_DirtyRecord) : ()
+
+axiom postcondition_mut_hist_inv_closure1_spec:
+  forall self: (), args: UInt64.t, res_state: (), res: t_DirtyRecord. ([%#sops] postcondition_mut_closure1 self args res_state res)
+    -> ([%#sops'0] hist_inv_closure1 self res_state)
+
+type t_Map_Range_usize_closure1
+
+predicate precondition_closure1 [@inline:trivial] (self: ()) (args: UInt64.t) =
+  [%#smodel'23] let _0 = args in forall bor_self: MutBorrow.t (). bor_self.current = self -> closure1'pre bor_self _0
+
+meta "rewrite_def" predicate precondition_closure1
+
+predicate next_precondition_Range_usize'0 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'3] forall e: UInt64.t, i: t_Range_usize [produces_Range_usize iter (Seq.singleton e) i]. inv_usize e
+      /\ produces_Range_usize iter (Seq.singleton e) i -> precondition_closure1 func e
+
+meta "rewrite_def" predicate next_precondition_Range_usize'0
+
+predicate inv_refmut_closure1 [@inline:trivial] (_1: MutBorrow.t ()) = true
+
+meta "rewrite_def" predicate inv_refmut_closure1
+
+predicate preservation_Range_usize'0 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'0] forall s: Seq.seq UInt64.t, e1: UInt64.t, e2: UInt64.t, f: MutBorrow.t (), b: t_DirtyRecord, i: t_Range_usize [produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i, postcondition_mut_closure1 f.current e1 f.final b]. hist_inv_closure1 func f.current
+    -> inv_Seq_usize s /\ inv_usize e1 /\ inv_usize e2 /\ inv_refmut_closure1 f
+    -> produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i
+    -> postcondition_mut_closure1 f.current e1 f.final b -> precondition_closure1 f.final e2
+
+meta "rewrite_def" predicate preservation_Range_usize'0
+
+predicate reinitialize_Range_usize'0 [@inline:trivial] =
+  [%#smap] forall iter: MutBorrow.t t_Range_usize, func: (). completed_Range_usize iter
+    -> next_precondition_Range_usize'0 iter.final func /\ preservation_Range_usize'0 iter.final func
+
+meta "rewrite_def" predicate reinitialize_Range_usize'0
+
+function iter_Map_Range_usize_closure1 (self: t_Map_Range_usize_closure1) : t_Range_usize
+
+predicate inv_closure1 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate inv_closure1
+
+function func_Map_Range_usize_closure1 (self: t_Map_Range_usize_closure1) : ()
+
+predicate invariant_Map_Range_usize_closure1 (self: t_Map_Range_usize_closure1)
+
+axiom invariant_Map_Range_usize_closure1_spec:
+  forall self: t_Map_Range_usize_closure1. [%#smap'8] invariant_Map_Range_usize_closure1 self
+    -> inv_Range_usize (iter_Map_Range_usize_closure1 self) /\ inv_closure1 (func_Map_Range_usize_closure1 self)
+
+predicate inv_Map_Range_usize_closure1 (_1: t_Map_Range_usize_closure1)
+
+axiom inv_axiom'0: forall x: t_Map_Range_usize_closure1 [inv_Map_Range_usize_closure1 x]. inv_Map_Range_usize_closure1 x
+    -> invariant_Map_Range_usize_closure1 x
+
+let rec map_Range_usize'0 (self_: t_Range_usize) (f: ()) (return (x: t_Map_Range_usize_closure1)) =
+  {[@stop_split] [@expl:map_Range_usize requires] ([@stop_split] [@expl:map requires #0] [%#siter] forall e: UInt64.t, i2: t_Range_usize. produces_Range_usize self_ (Seq.singleton e) i2
+        /\ inv_usize e -> precondition_closure1 f e)
+  /\ ([@stop_split] [@expl:map requires #1] [%#siter'0] reinitialize_Range_usize'0)
+  /\ ([@stop_split] [@expl:map requires #2] [%#siter'1] preservation_Range_usize'0 self_ f)}
+  any
+  [ return (result: t_Map_Range_usize_closure1) ->
+  {[@stop_split] [@expl:map_Range_usize ensures] ([@stop_split] [@expl:map result type invariant] inv_Map_Range_usize_closure1 result)
+    /\ ([@stop_split] [@expl:map ensures] [%#siter'2] iter_Map_Range_usize_closure1 result = self_
+    /\ func_Map_Range_usize_closure1 result = f)}
+    (! return {result}) ]
+
+predicate resolve_Map_Range_usize_closure1 [@inline:trivial] (self: t_Map_Range_usize_closure1) =
+  [%#smap'9] resolve_Range_usize (iter_Map_Range_usize_closure1 self)
+  /\ resolve_closure1 (func_Map_Range_usize_closure1 self)
+
+meta "rewrite_def" predicate resolve_Map_Range_usize_closure1
+
+predicate resolve_Map_Range_usize_closure1'0 (_1: t_Map_Range_usize_closure1)
+
+axiom resolve_axiom'0:
+  forall x: t_Map_Range_usize_closure1 [resolve_Map_Range_usize_closure1'0 x]. resolve_Map_Range_usize_closure1'0 x
+    -> resolve_Map_Range_usize_closure1 x
+
+predicate produces_Map_Range_usize_closure1 [@inline:trivial] (self: t_Map_Range_usize_closure1) (visited: Seq.seq t_DirtyRecord) (succ: t_Map_Range_usize_closure1) =
+  [%#smap'2] hist_inv_closure1 (func_Map_Range_usize_closure1 self) (func_Map_Range_usize_closure1 succ)
+  /\ (exists fs: Seq.seq (MutBorrow.t ()). Seq.length fs = Seq.length visited
+    /\ (exists s: Seq.seq UInt64.t [produces_Range_usize (iter_Map_Range_usize_closure1 self) s (iter_Map_Range_usize_closure1 succ)]. Seq.length s
+        = Seq.length visited
+      /\ produces_Range_usize (iter_Map_Range_usize_closure1 self) s (iter_Map_Range_usize_closure1 succ)
+      /\ (forall i: int. 1 <= i /\ i < Seq.length fs -> (Seq.get fs (i - 1)).final = (Seq.get fs i).current)
+      /\ (if Seq.length visited = 0 then
+          func_Map_Range_usize_closure1 self = func_Map_Range_usize_closure1 succ
+        else
+          (Seq.get fs 0).current = func_Map_Range_usize_closure1 self
+          /\ (Seq.get fs (Seq.length visited - 1)).final = func_Map_Range_usize_closure1 succ
+        )
+      /\ (forall i: int. 0 <= i /\ i < Seq.length visited
+        -> hist_inv_closure1 (func_Map_Range_usize_closure1 self) (Seq.get fs i).current
+        /\ postcondition_mut_closure1 (Seq.get fs i).current (Seq.get s i) (Seq.get fs i).final (Seq.get visited i))))
+
+meta "rewrite_def" predicate produces_Map_Range_usize_closure1
+
+function produces_trans_Map_Range_usize_closure1 (a: t_Map_Range_usize_closure1) (ab: Seq.seq t_DirtyRecord) (b: t_Map_Range_usize_closure1) (bc: Seq.seq t_DirtyRecord) (c: t_Map_Range_usize_closure1) : ()
+
+axiom produces_trans_Map_Range_usize_closure1_spec:
+  forall a: t_Map_Range_usize_closure1, ab: Seq.seq t_DirtyRecord, b: t_Map_Range_usize_closure1, bc: Seq.seq t_DirtyRecord, c: t_Map_Range_usize_closure1. ([%#smap'5] produces_Map_Range_usize_closure1 a ab b)
+    -> ([%#smap'6] produces_Map_Range_usize_closure1 b bc c)
+    -> ([%#smap'7] produces_Map_Range_usize_closure1 a (Seq.(++) ab bc) c)
+
+function produces_refl_Map_Range_usize_closure1 (self: t_Map_Range_usize_closure1) : ()
+
+axiom produces_refl_Map_Range_usize_closure1_spec:
+  forall self: t_Map_Range_usize_closure1. [%#smap'4] produces_Map_Range_usize_closure1 self (Seq.empty: Seq.seq t_DirtyRecord) self
+
+predicate completed_Map_Range_usize_closure1 (self: MutBorrow.t t_Map_Range_usize_closure1) =
+  [%#smap'1] (exists inner: MutBorrow.t t_Range_usize. inner.current = iter_Map_Range_usize_closure1 self.current
+      /\ inner.final = iter_Map_Range_usize_closure1 self.final /\ completed_Range_usize inner)
+  /\ func_Map_Range_usize_closure1 self.current = func_Map_Range_usize_closure1 self.final
+
+let rec collect_Map_Range_usize_closure1 (self_: t_Map_Range_usize_closure1) (return (x: t_Vec_DirtyRecord_Global)) =
+  {[@stop_split] [@expl:collect 'self_' type invariant] [%#siter'3] inv_Map_Range_usize_closure1 self_}
+  any
+  [ return (result: t_Vec_DirtyRecord_Global) ->
+  {[@stop_split] [@expl:collect ensures] [%#siter'4] exists done': MutBorrow.t t_Map_Range_usize_closure1, prod: Seq.seq t_DirtyRecord. resolve_Map_Range_usize_closure1'0 done'.final
+      /\ completed_Map_Range_usize_closure1 done'
+      /\ produces_Map_Range_usize_closure1 self_ prod done'.current
+      /\ from_iter_post_Vec_DirtyRecord_Global prod result}
+    (! return {result}) ]
+
+type t_Vec_usize_Global
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec'2] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec new_usize (return (x: t_Vec_usize_Global)) = any
+  [ return (result: t_Vec_usize_Global) ->
+  {[@stop_split] [@expl:new ensures] [%#svec'1] Seq.length (view_Vec_usize_Global result) = 0}
+    (! return {result}) ]
+
+predicate resolve_refmut_closure2 [@inline:trivial] (_1: MutBorrow.t ()) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_closure2
+
+type t_CleanRecord = { present'0: bool; id'0: t_Option_usize; key'0: UInt64.t; value'0: UInt64.t }
+
+let rec absent'0 (return (x: t_CleanRecord)) = any [ return (result: t_CleanRecord) -> (! return {result}) ]
+
+predicate resolve_closure2 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_closure2
+
+predicate hist_inv_closure2 [@inline:trivial] (self: ()) (result_state: ()) = [%#smodel'24] true
+
+meta "rewrite_def" predicate hist_inv_closure2
+
+let rec closure2 [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 288 21 288 24] [@coma:extspec]
+  (self: MutBorrow.t ()) (_0: UInt64.t) (return (x: t_CleanRecord)) = bb0
+  [ bb0 = s0
+    [ s0 = -{resolve_refmut_closure2 self}- s1
+    | s1 = absent'0 [%#smodel'20] (fun (_x: t_CleanRecord) -> [ &_ret <- _x ] s2)
+    | s2 = return {_ret} ] ] [ & _ret: t_CleanRecord = Any.any_l () | & self: MutBorrow.t () = self ]
+  [ return (result: t_CleanRecord) ->
+  {[@stop_split] [@expl:closure hist_inv post] hist_inv_closure2 self.current self.final}
+    return {result} ]
+
+meta "rewrite_def" predicate closure2'pre
+
+meta "rewrite_def" predicate closure2'post'return
+
+predicate postcondition_once_closure2 [@inline:trivial] (self: ()) (args: UInt64.t) (result: t_CleanRecord) =
+  [%#smodel'24] let _0 = args in exists e: (). exists bor_self: MutBorrow.t (). bor_self.current = self
+      /\ bor_self.final = e /\ closure2'post'return bor_self _0 result /\ hist_inv_closure2 self e
+
+meta "rewrite_def" predicate postcondition_once_closure2
+
+predicate postcondition_mut_closure2 [@inline:trivial] (self: ()) (args: UInt64.t) (result_state: ()) (result: t_CleanRecord) =
+  [%#smodel'24] let _0 = args in exists bor_self: MutBorrow.t (). bor_self.current = self
+    /\ bor_self.final = result_state /\ closure2'post'return bor_self _0 result /\ hist_inv_closure2 self result_state
+
+meta "rewrite_def" predicate postcondition_mut_closure2
+
+function fn_mut_once_closure2 (self: ()) (args: UInt64.t) (res: t_CleanRecord) : ()
+
+axiom fn_mut_once_closure2_spec:
+  forall self: (), args: UInt64.t, res: t_CleanRecord. [%#sops'5] postcondition_once_closure2 self args res
+    = (exists res_state: (). postcondition_mut_closure2 self args res_state res /\ resolve_closure2 res_state)
+
+function hist_inv_trans_closure2 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_closure2_spec: forall self: (), b: (), c: (). ([%#sops'2] hist_inv_closure2 self b)
+    -> ([%#sops'3] hist_inv_closure2 b c) -> ([%#sops'4] hist_inv_closure2 self c)
+
+function hist_inv_refl_closure2 (self: ()) : ()
+
+axiom hist_inv_refl_closure2_spec: forall self: (). [%#sops'1] hist_inv_closure2 self self
+
+function postcondition_mut_hist_inv_closure2 (self: ()) (args: UInt64.t) (res_state: ()) (res: t_CleanRecord) : ()
+
+axiom postcondition_mut_hist_inv_closure2_spec:
+  forall self: (), args: UInt64.t, res_state: (), res: t_CleanRecord. ([%#sops] postcondition_mut_closure2 self args res_state res)
+    -> ([%#sops'0] hist_inv_closure2 self res_state)
+
+type t_Map_Range_usize_closure2
+
+predicate precondition_closure2 [@inline:trivial] (self: ()) (args: UInt64.t) =
+  [%#smodel'24] let _0 = args in forall bor_self: MutBorrow.t (). bor_self.current = self -> closure2'pre bor_self _0
+
+meta "rewrite_def" predicate precondition_closure2
+
+predicate next_precondition_Range_usize'1 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'3] forall e: UInt64.t, i: t_Range_usize [produces_Range_usize iter (Seq.singleton e) i]. inv_usize e
+      /\ produces_Range_usize iter (Seq.singleton e) i -> precondition_closure2 func e
+
+meta "rewrite_def" predicate next_precondition_Range_usize'1
+
+predicate inv_refmut_closure2 [@inline:trivial] (_1: MutBorrow.t ()) = true
+
+meta "rewrite_def" predicate inv_refmut_closure2
+
+predicate preservation_Range_usize'1 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'0] forall s: Seq.seq UInt64.t, e1: UInt64.t, e2: UInt64.t, f: MutBorrow.t (), b: t_CleanRecord, i: t_Range_usize [produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i, postcondition_mut_closure2 f.current e1 f.final b]. hist_inv_closure2 func f.current
+    -> inv_Seq_usize s /\ inv_usize e1 /\ inv_usize e2 /\ inv_refmut_closure2 f
+    -> produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i
+    -> postcondition_mut_closure2 f.current e1 f.final b -> precondition_closure2 f.final e2
+
+meta "rewrite_def" predicate preservation_Range_usize'1
+
+predicate reinitialize_Range_usize'1 [@inline:trivial] =
+  [%#smap] forall iter: MutBorrow.t t_Range_usize, func: (). completed_Range_usize iter
+    -> next_precondition_Range_usize'1 iter.final func /\ preservation_Range_usize'1 iter.final func
+
+meta "rewrite_def" predicate reinitialize_Range_usize'1
+
+function iter_Map_Range_usize_closure2 (self: t_Map_Range_usize_closure2) : t_Range_usize
+
+predicate inv_closure2 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate inv_closure2
+
+function func_Map_Range_usize_closure2 (self: t_Map_Range_usize_closure2) : ()
+
+predicate invariant_Map_Range_usize_closure2 (self: t_Map_Range_usize_closure2)
+
+axiom invariant_Map_Range_usize_closure2_spec:
+  forall self: t_Map_Range_usize_closure2. [%#smap'8] invariant_Map_Range_usize_closure2 self
+    -> inv_Range_usize (iter_Map_Range_usize_closure2 self) /\ inv_closure2 (func_Map_Range_usize_closure2 self)
+
+predicate inv_Map_Range_usize_closure2 (_1: t_Map_Range_usize_closure2)
+
+axiom inv_axiom'1: forall x: t_Map_Range_usize_closure2 [inv_Map_Range_usize_closure2 x]. inv_Map_Range_usize_closure2 x
+    -> invariant_Map_Range_usize_closure2 x
+
+let rec map_Range_usize'1 (self_: t_Range_usize) (f: ()) (return (x: t_Map_Range_usize_closure2)) =
+  {[@stop_split] [@expl:map_Range_usize requires] ([@stop_split] [@expl:map requires #0] [%#siter] forall e: UInt64.t, i2: t_Range_usize. produces_Range_usize self_ (Seq.singleton e) i2
+        /\ inv_usize e -> precondition_closure2 f e)
+  /\ ([@stop_split] [@expl:map requires #1] [%#siter'0] reinitialize_Range_usize'1)
+  /\ ([@stop_split] [@expl:map requires #2] [%#siter'1] preservation_Range_usize'1 self_ f)}
+  any
+  [ return (result: t_Map_Range_usize_closure2) ->
+  {[@stop_split] [@expl:map_Range_usize ensures] ([@stop_split] [@expl:map result type invariant] inv_Map_Range_usize_closure2 result)
+    /\ ([@stop_split] [@expl:map ensures] [%#siter'2] iter_Map_Range_usize_closure2 result = self_
+    /\ func_Map_Range_usize_closure2 result = f)}
+    (! return {result}) ]
+
+type t_Vec_CleanRecord_Global
+
+predicate resolve_Map_Range_usize_closure2 [@inline:trivial] (self: t_Map_Range_usize_closure2) =
+  [%#smap'9] resolve_Range_usize (iter_Map_Range_usize_closure2 self)
+  /\ resolve_closure2 (func_Map_Range_usize_closure2 self)
+
+meta "rewrite_def" predicate resolve_Map_Range_usize_closure2
+
+predicate resolve_Map_Range_usize_closure2'0 (_1: t_Map_Range_usize_closure2)
+
+axiom resolve_axiom'1:
+  forall x: t_Map_Range_usize_closure2 [resolve_Map_Range_usize_closure2'0 x]. resolve_Map_Range_usize_closure2'0 x
+    -> resolve_Map_Range_usize_closure2 x
+
+predicate produces_Map_Range_usize_closure2 [@inline:trivial] (self: t_Map_Range_usize_closure2) (visited: Seq.seq t_CleanRecord) (succ: t_Map_Range_usize_closure2) =
+  [%#smap'2] hist_inv_closure2 (func_Map_Range_usize_closure2 self) (func_Map_Range_usize_closure2 succ)
+  /\ (exists fs: Seq.seq (MutBorrow.t ()). Seq.length fs = Seq.length visited
+    /\ (exists s: Seq.seq UInt64.t [produces_Range_usize (iter_Map_Range_usize_closure2 self) s (iter_Map_Range_usize_closure2 succ)]. Seq.length s
+        = Seq.length visited
+      /\ produces_Range_usize (iter_Map_Range_usize_closure2 self) s (iter_Map_Range_usize_closure2 succ)
+      /\ (forall i: int. 1 <= i /\ i < Seq.length fs -> (Seq.get fs (i - 1)).final = (Seq.get fs i).current)
+      /\ (if Seq.length visited = 0 then
+          func_Map_Range_usize_closure2 self = func_Map_Range_usize_closure2 succ
+        else
+          (Seq.get fs 0).current = func_Map_Range_usize_closure2 self
+          /\ (Seq.get fs (Seq.length visited - 1)).final = func_Map_Range_usize_closure2 succ
+        )
+      /\ (forall i: int. 0 <= i /\ i < Seq.length visited
+        -> hist_inv_closure2 (func_Map_Range_usize_closure2 self) (Seq.get fs i).current
+        /\ postcondition_mut_closure2 (Seq.get fs i).current (Seq.get s i) (Seq.get fs i).final (Seq.get visited i))))
+
+meta "rewrite_def" predicate produces_Map_Range_usize_closure2
+
+function produces_trans_Map_Range_usize_closure2 (a: t_Map_Range_usize_closure2) (ab: Seq.seq t_CleanRecord) (b: t_Map_Range_usize_closure2) (bc: Seq.seq t_CleanRecord) (c: t_Map_Range_usize_closure2) : ()
+
+axiom produces_trans_Map_Range_usize_closure2_spec:
+  forall a: t_Map_Range_usize_closure2, ab: Seq.seq t_CleanRecord, b: t_Map_Range_usize_closure2, bc: Seq.seq t_CleanRecord, c: t_Map_Range_usize_closure2. ([%#smap'5] produces_Map_Range_usize_closure2 a ab b)
+    -> ([%#smap'6] produces_Map_Range_usize_closure2 b bc c)
+    -> ([%#smap'7] produces_Map_Range_usize_closure2 a (Seq.(++) ab bc) c)
+
+function produces_refl_Map_Range_usize_closure2 (self: t_Map_Range_usize_closure2) : ()
+
+axiom produces_refl_Map_Range_usize_closure2_spec:
+  forall self: t_Map_Range_usize_closure2. [%#smap'4] produces_Map_Range_usize_closure2 self (Seq.empty: Seq.seq t_CleanRecord) self
+
+predicate completed_Map_Range_usize_closure2 (self: MutBorrow.t t_Map_Range_usize_closure2) =
+  [%#smap'1] (exists inner: MutBorrow.t t_Range_usize. inner.current = iter_Map_Range_usize_closure2 self.current
+      /\ inner.final = iter_Map_Range_usize_closure2 self.final /\ completed_Range_usize inner)
+  /\ func_Map_Range_usize_closure2 self.current = func_Map_Range_usize_closure2 self.final
+
+function view_Vec_CleanRecord_Global (self: t_Vec_CleanRecord_Global) : Seq.seq t_CleanRecord
+
+axiom view_Vec_CleanRecord_Global_spec:
+  forall self: t_Vec_CleanRecord_Global. [%#svec'2] Seq.length (view_Vec_CleanRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate from_iter_post_Vec_CleanRecord_Global (prod: Seq.seq t_CleanRecord) (res: t_Vec_CleanRecord_Global) =
+  [%#svec'4] prod = view_Vec_CleanRecord_Global res
+
+let rec collect_Map_Range_usize_closure2 (self_: t_Map_Range_usize_closure2) (return (x: t_Vec_CleanRecord_Global)) =
+  {[@stop_split] [@expl:collect 'self_' type invariant] [%#siter'3] inv_Map_Range_usize_closure2 self_}
+  any
+  [ return (result: t_Vec_CleanRecord_Global) ->
+  {[@stop_split] [@expl:collect ensures] [%#siter'4] exists done': MutBorrow.t t_Map_Range_usize_closure2, prod: Seq.seq t_CleanRecord. resolve_Map_Range_usize_closure2'0 done'.final
+      /\ completed_Map_Range_usize_closure2 done'
+      /\ produces_Map_Range_usize_closure2 self_ prod done'.current
+      /\ from_iter_post_Vec_CleanRecord_Global prod result}
+    (! return {result}) ]
+
+predicate resolve_refmut_closure3 [@inline:trivial] (_1: MutBorrow.t ()) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_closure3
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+let rec absent'1 (return (x: t_DurableValue)) = any [ return (result: t_DurableValue) -> (! return {result}) ]
+
+predicate resolve_closure3 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_closure3
+
+predicate hist_inv_closure3 [@inline:trivial] (self: ()) (result_state: ()) = [%#smodel'25] true
+
+meta "rewrite_def" predicate hist_inv_closure3
+
+let rec closure3 [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 291 21 291 24] [@coma:extspec]
+  (self: MutBorrow.t ()) (_0: UInt64.t) (return (x: t_DurableValue)) = bb0
+  [ bb0 = s0
+    [ s0 = -{resolve_refmut_closure3 self}- s1
+    | s1 = absent'1 [%#smodel'21] (fun (_x: t_DurableValue) -> [ &_ret <- _x ] s2)
+    | s2 = return {_ret} ] ] [ & _ret: t_DurableValue = Any.any_l () | & self: MutBorrow.t () = self ]
+  [ return (result: t_DurableValue) ->
+  {[@stop_split] [@expl:closure hist_inv post] hist_inv_closure3 self.current self.final}
+    return {result} ]
+
+meta "rewrite_def" predicate closure3'pre
+
+meta "rewrite_def" predicate closure3'post'return
+
+predicate postcondition_once_closure3 [@inline:trivial] (self: ()) (args: UInt64.t) (result: t_DurableValue) =
+  [%#smodel'25] let _0 = args in exists e: (). exists bor_self: MutBorrow.t (). bor_self.current = self
+      /\ bor_self.final = e /\ closure3'post'return bor_self _0 result /\ hist_inv_closure3 self e
+
+meta "rewrite_def" predicate postcondition_once_closure3
+
+predicate postcondition_mut_closure3 [@inline:trivial] (self: ()) (args: UInt64.t) (result_state: ()) (result: t_DurableValue) =
+  [%#smodel'25] let _0 = args in exists bor_self: MutBorrow.t (). bor_self.current = self
+    /\ bor_self.final = result_state /\ closure3'post'return bor_self _0 result /\ hist_inv_closure3 self result_state
+
+meta "rewrite_def" predicate postcondition_mut_closure3
+
+function fn_mut_once_closure3 (self: ()) (args: UInt64.t) (res: t_DurableValue) : ()
+
+axiom fn_mut_once_closure3_spec:
+  forall self: (), args: UInt64.t, res: t_DurableValue. [%#sops'5] postcondition_once_closure3 self args res
+    = (exists res_state: (). postcondition_mut_closure3 self args res_state res /\ resolve_closure3 res_state)
+
+function hist_inv_trans_closure3 (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_closure3_spec: forall self: (), b: (), c: (). ([%#sops'2] hist_inv_closure3 self b)
+    -> ([%#sops'3] hist_inv_closure3 b c) -> ([%#sops'4] hist_inv_closure3 self c)
+
+function hist_inv_refl_closure3 (self: ()) : ()
+
+axiom hist_inv_refl_closure3_spec: forall self: (). [%#sops'1] hist_inv_closure3 self self
+
+function postcondition_mut_hist_inv_closure3 (self: ()) (args: UInt64.t) (res_state: ()) (res: t_DurableValue) : ()
+
+axiom postcondition_mut_hist_inv_closure3_spec:
+  forall self: (), args: UInt64.t, res_state: (), res: t_DurableValue. ([%#sops] postcondition_mut_closure3 self args res_state res)
+    -> ([%#sops'0] hist_inv_closure3 self res_state)
+
+type t_Map_Range_usize_closure3
+
+predicate precondition_closure3 [@inline:trivial] (self: ()) (args: UInt64.t) =
+  [%#smodel'25] let _0 = args in forall bor_self: MutBorrow.t (). bor_self.current = self -> closure3'pre bor_self _0
+
+meta "rewrite_def" predicate precondition_closure3
+
+predicate next_precondition_Range_usize'2 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'3] forall e: UInt64.t, i: t_Range_usize [produces_Range_usize iter (Seq.singleton e) i]. inv_usize e
+      /\ produces_Range_usize iter (Seq.singleton e) i -> precondition_closure3 func e
+
+meta "rewrite_def" predicate next_precondition_Range_usize'2
+
+predicate inv_refmut_closure3 [@inline:trivial] (_1: MutBorrow.t ()) = true
+
+meta "rewrite_def" predicate inv_refmut_closure3
+
+predicate preservation_Range_usize'2 [@inline:trivial] (iter: t_Range_usize) (func: ()) =
+  [%#smap'0] forall s: Seq.seq UInt64.t, e1: UInt64.t, e2: UInt64.t, f: MutBorrow.t (), b: t_DurableValue, i: t_Range_usize [produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i, postcondition_mut_closure3 f.current e1 f.final b]. hist_inv_closure3 func f.current
+    -> inv_Seq_usize s /\ inv_usize e1 /\ inv_usize e2 /\ inv_refmut_closure3 f
+    -> produces_Range_usize iter (Seq.snoc (Seq.snoc s e1) e2) i
+    -> postcondition_mut_closure3 f.current e1 f.final b -> precondition_closure3 f.final e2
+
+meta "rewrite_def" predicate preservation_Range_usize'2
+
+predicate reinitialize_Range_usize'2 [@inline:trivial] =
+  [%#smap] forall iter: MutBorrow.t t_Range_usize, func: (). completed_Range_usize iter
+    -> next_precondition_Range_usize'2 iter.final func /\ preservation_Range_usize'2 iter.final func
+
+meta "rewrite_def" predicate reinitialize_Range_usize'2
+
+function iter_Map_Range_usize_closure3 (self: t_Map_Range_usize_closure3) : t_Range_usize
+
+predicate inv_closure3 [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate inv_closure3
+
+function func_Map_Range_usize_closure3 (self: t_Map_Range_usize_closure3) : ()
+
+predicate invariant_Map_Range_usize_closure3 (self: t_Map_Range_usize_closure3)
+
+axiom invariant_Map_Range_usize_closure3_spec:
+  forall self: t_Map_Range_usize_closure3. [%#smap'8] invariant_Map_Range_usize_closure3 self
+    -> inv_Range_usize (iter_Map_Range_usize_closure3 self) /\ inv_closure3 (func_Map_Range_usize_closure3 self)
+
+predicate inv_Map_Range_usize_closure3 (_1: t_Map_Range_usize_closure3)
+
+axiom inv_axiom'2: forall x: t_Map_Range_usize_closure3 [inv_Map_Range_usize_closure3 x]. inv_Map_Range_usize_closure3 x
+    -> invariant_Map_Range_usize_closure3 x
+
+let rec map_Range_usize'2 (self_: t_Range_usize) (f: ()) (return (x: t_Map_Range_usize_closure3)) =
+  {[@stop_split] [@expl:map_Range_usize requires] ([@stop_split] [@expl:map requires #0] [%#siter] forall e: UInt64.t, i2: t_Range_usize. produces_Range_usize self_ (Seq.singleton e) i2
+        /\ inv_usize e -> precondition_closure3 f e)
+  /\ ([@stop_split] [@expl:map requires #1] [%#siter'0] reinitialize_Range_usize'2)
+  /\ ([@stop_split] [@expl:map requires #2] [%#siter'1] preservation_Range_usize'2 self_ f)}
+  any
+  [ return (result: t_Map_Range_usize_closure3) ->
+  {[@stop_split] [@expl:map_Range_usize ensures] ([@stop_split] [@expl:map result type invariant] inv_Map_Range_usize_closure3 result)
+    /\ ([@stop_split] [@expl:map ensures] [%#siter'2] iter_Map_Range_usize_closure3 result = self_
+    /\ func_Map_Range_usize_closure3 result = f)}
+    (! return {result}) ]
+
+type t_Vec_DurableValue_Global
+
+predicate resolve_Map_Range_usize_closure3 [@inline:trivial] (self: t_Map_Range_usize_closure3) =
+  [%#smap'9] resolve_Range_usize (iter_Map_Range_usize_closure3 self)
+  /\ resolve_closure3 (func_Map_Range_usize_closure3 self)
+
+meta "rewrite_def" predicate resolve_Map_Range_usize_closure3
+
+predicate resolve_Map_Range_usize_closure3'0 (_1: t_Map_Range_usize_closure3)
+
+axiom resolve_axiom'2:
+  forall x: t_Map_Range_usize_closure3 [resolve_Map_Range_usize_closure3'0 x]. resolve_Map_Range_usize_closure3'0 x
+    -> resolve_Map_Range_usize_closure3 x
+
+predicate produces_Map_Range_usize_closure3 [@inline:trivial] (self: t_Map_Range_usize_closure3) (visited: Seq.seq t_DurableValue) (succ: t_Map_Range_usize_closure3) =
+  [%#smap'2] hist_inv_closure3 (func_Map_Range_usize_closure3 self) (func_Map_Range_usize_closure3 succ)
+  /\ (exists fs: Seq.seq (MutBorrow.t ()). Seq.length fs = Seq.length visited
+    /\ (exists s: Seq.seq UInt64.t [produces_Range_usize (iter_Map_Range_usize_closure3 self) s (iter_Map_Range_usize_closure3 succ)]. Seq.length s
+        = Seq.length visited
+      /\ produces_Range_usize (iter_Map_Range_usize_closure3 self) s (iter_Map_Range_usize_closure3 succ)
+      /\ (forall i: int. 1 <= i /\ i < Seq.length fs -> (Seq.get fs (i - 1)).final = (Seq.get fs i).current)
+      /\ (if Seq.length visited = 0 then
+          func_Map_Range_usize_closure3 self = func_Map_Range_usize_closure3 succ
+        else
+          (Seq.get fs 0).current = func_Map_Range_usize_closure3 self
+          /\ (Seq.get fs (Seq.length visited - 1)).final = func_Map_Range_usize_closure3 succ
+        )
+      /\ (forall i: int. 0 <= i /\ i < Seq.length visited
+        -> hist_inv_closure3 (func_Map_Range_usize_closure3 self) (Seq.get fs i).current
+        /\ postcondition_mut_closure3 (Seq.get fs i).current (Seq.get s i) (Seq.get fs i).final (Seq.get visited i))))
+
+meta "rewrite_def" predicate produces_Map_Range_usize_closure3
+
+function produces_trans_Map_Range_usize_closure3 (a: t_Map_Range_usize_closure3) (ab: Seq.seq t_DurableValue) (b: t_Map_Range_usize_closure3) (bc: Seq.seq t_DurableValue) (c: t_Map_Range_usize_closure3) : ()
+
+axiom produces_trans_Map_Range_usize_closure3_spec:
+  forall a: t_Map_Range_usize_closure3, ab: Seq.seq t_DurableValue, b: t_Map_Range_usize_closure3, bc: Seq.seq t_DurableValue, c: t_Map_Range_usize_closure3. ([%#smap'5] produces_Map_Range_usize_closure3 a ab b)
+    -> ([%#smap'6] produces_Map_Range_usize_closure3 b bc c)
+    -> ([%#smap'7] produces_Map_Range_usize_closure3 a (Seq.(++) ab bc) c)
+
+function produces_refl_Map_Range_usize_closure3 (self: t_Map_Range_usize_closure3) : ()
+
+axiom produces_refl_Map_Range_usize_closure3_spec:
+  forall self: t_Map_Range_usize_closure3. [%#smap'4] produces_Map_Range_usize_closure3 self (Seq.empty: Seq.seq t_DurableValue) self
+
+predicate completed_Map_Range_usize_closure3 (self: MutBorrow.t t_Map_Range_usize_closure3) =
+  [%#smap'1] (exists inner: MutBorrow.t t_Range_usize. inner.current = iter_Map_Range_usize_closure3 self.current
+      /\ inner.final = iter_Map_Range_usize_closure3 self.final /\ completed_Range_usize inner)
+  /\ func_Map_Range_usize_closure3 self.current = func_Map_Range_usize_closure3 self.final
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'2] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate from_iter_post_Vec_DurableValue_Global (prod: Seq.seq t_DurableValue) (res: t_Vec_DurableValue_Global) =
+  [%#svec'4] prod = view_Vec_DurableValue_Global res
+
+let rec collect_Map_Range_usize_closure3 (self_: t_Map_Range_usize_closure3) (return (x: t_Vec_DurableValue_Global)) =
+  {[@stop_split] [@expl:collect 'self_' type invariant] [%#siter'3] inv_Map_Range_usize_closure3 self_}
+  any
+  [ return (result: t_Vec_DurableValue_Global) ->
+  {[@stop_split] [@expl:collect ensures] [%#siter'4] exists done': MutBorrow.t t_Map_Range_usize_closure3, prod: Seq.seq t_DurableValue. resolve_Map_Range_usize_closure3'0 done'.final
+      /\ completed_Map_Range_usize_closure3 done'
+      /\ produces_Map_Range_usize_closure3 self_ prod done'.current
+      /\ from_iter_post_Vec_DurableValue_Global prod result}
+    (! return {result}) ]
+
+type t_Vec_bool_Global
+
+function view_Vec_bool_Global (self: t_Vec_bool_Global) : Seq.seq bool
+
+axiom view_Vec_bool_Global_spec: forall self: t_Vec_bool_Global. [%#svec'2] Seq.length (view_Vec_bool_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate index_Vec_bool_Global [@inline:trivial] (self: t_Vec_bool_Global) (ix: int) =
+  [%#svec'3] Seq.get (view_Vec_bool_Global self) ix
+
+meta "rewrite_def" predicate index_Vec_bool_Global
+
+let rec from_elem_bool (elem: bool) (n: UInt64.t) (return (x: t_Vec_bool_Global)) = any
+  [ return (result: t_Vec_bool_Global) ->
+  {[@stop_split] [@expl:from_elem_bool ensures] ([@stop_split] [@expl:from_elem ensures #0] [%#svec] Seq.length (view_Vec_bool_Global result)
+      = UInt64.t'int n)
+    /\ ([@stop_split] [@expl:from_elem ensures #1] [%#svec'0] forall i: int. 0 <= i /\ i < UInt64.t'int n
+      -> index_Vec_bool_Global result i = elem)}
+    (! return {result}) ]
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec new [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 277 4 277 43] (config: t_ModelConfig)
+  (return (x: t_ModelState)) = (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_3 <- None ] s1
+    | s1 = from_elem_VisibleRef {_3} {config.key_count} (fun (_x: t_Vec_VisibleRef_Global) -> [ &_2 <- _x ] s2)
+    | s2 = [ &_7 <- { start = ([%#smodel] (0: UInt64.t)); end' = config.max_write } ] s3
+    | s3 = [ &_9 <- () ] s4
+    | s4 = map_Range_usize [%#smodel'0] {_7} {_9} (fun (_x: t_Map_Range_usize_closure0) -> [ &_6 <- _x ] s5)
+    | s5 = collect_Map_Range_usize_closure0 [%#smodel'1] {_6} (fun (_x: t_Vec_DirtyRecord_Global) -> [ &_5 <- _x ] s6)
+    | s6 = [ &_12 <- { start = ([%#smodel'2] (0: UInt64.t)); end' = config.max_write } ] s7
+    | s7 = [ &_14 <- () ] s8
+    | s8 = map_Range_usize'0 [%#smodel'3] {_12} {_14} (fun (_x: t_Map_Range_usize_closure1) -> [ &_11 <- _x ] s9)
+    | s9 = collect_Map_Range_usize_closure1 [%#smodel'4] {_11}
+        (fun (_x: t_Vec_DirtyRecord_Global) -> [ &_10 <- _x ] s10)
+    | s10 = new_usize [%#smodel'5] (fun (_x: t_Vec_usize_Global) -> [ &_15 <- _x ] s11)
+    | s11 = [ &_18 <- { start = ([%#smodel'6] (0: UInt64.t)); end' = config.max_cache } ] s12
+    | s12 = [ &_20 <- () ] s13
+    | s13 = map_Range_usize'1 [%#smodel'7] {_18} {_20} (fun (_x: t_Map_Range_usize_closure2) -> [ &_17 <- _x ] s14)
+    | s14 = collect_Map_Range_usize_closure2 [%#smodel'8] {_17}
+        (fun (_x: t_Vec_CleanRecord_Global) -> [ &_16 <- _x ] s15)
+    | s15 = [ &_23 <- { start = ([%#smodel'9] (0: UInt64.t)); end' = config.key_count } ] s16
+    | s16 = [ &_25 <- () ] s17
+    | s17 = map_Range_usize'2 [%#smodel'10] {_23} {_25} (fun (_x: t_Map_Range_usize_closure3) -> [ &_22 <- _x ] s18)
+    | s18 = collect_Map_Range_usize_closure3 [%#smodel'11] {_22}
+        (fun (_x: t_Vec_DurableValue_Global) -> [ &_21 <- _x ] s19)
+    | s19 = new_usize [%#smodel'12] (fun (_x: t_Vec_usize_Global) -> [ &_26 <- _x ] s20)
+    | s20 = from_elem_bool {[%#smodel'13] false} {config.max_write} (fun (_x: t_Vec_bool_Global) -> [ &_27 <- _x ] s21)
+    | s21 = [ &_ret <- { visible = _2;
+                         write_store = _5;
+                         write_hist = _10;
+                         dirty_q = _15;
+                         cache_store = _16;
+                         durable = _21;
+                         flushed = _26;
+                         created_dirty = _27;
+                         next_write = ([%#smodel'14] (0: UInt64.t));
+                         next_cache = ([%#smodel'15] (0: UInt64.t));
+                         crashed = ([%#smodel'16] false);
+                         bad_read = ([%#smodel'17] false) } ] s22
+    | s22 = return {_ret} ] ]
+  [ & _ret: t_ModelState = Any.any_l ()
+  | & config: t_ModelConfig = config
+  | & _2: t_Vec_VisibleRef_Global = Any.any_l ()
+  | & _3: t_VisibleRef = Any.any_l ()
+  | & _5: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _6: t_Map_Range_usize_closure0 = Any.any_l ()
+  | & _7: t_Range_usize = Any.any_l ()
+  | & _9: () = Any.any_l ()
+  | & _10: t_Vec_DirtyRecord_Global = Any.any_l ()
+  | & _11: t_Map_Range_usize_closure1 = Any.any_l ()
+  | & _12: t_Range_usize = Any.any_l ()
+  | & _14: () = Any.any_l ()
+  | & _15: t_Vec_usize_Global = Any.any_l ()
+  | & _16: t_Vec_CleanRecord_Global = Any.any_l ()
+  | & _17: t_Map_Range_usize_closure2 = Any.any_l ()
+  | & _18: t_Range_usize = Any.any_l ()
+  | & _20: () = Any.any_l ()
+  | & _21: t_Vec_DurableValue_Global = Any.any_l ()
+  | & _22: t_Map_Range_usize_closure3 = Any.any_l ()
+  | & _23: t_Range_usize = Any.any_l ()
+  | & _25: () = Any.any_l ()
+  | & _26: t_Vec_usize_Global = Any.any_l ()
+  | & _27: t_Vec_bool_Global = Any.any_l () ]) [ return (result: t_ModelState) -> (! return {result}) ]

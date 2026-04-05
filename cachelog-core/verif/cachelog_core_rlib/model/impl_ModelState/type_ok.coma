@@ -1,0 +1,683 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 522 4 522 54 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 523 11 523 29
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 524 15 524 37
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 525 15 525 36
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 526 15 526 37
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 527 15 527 33
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 528 15 528 39
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 532 19 532 24
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 535 24 535 25
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 536 22 536 40
+let%span smodel'8 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 537 30 537 37
+let%span smodel'9 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 540 41 540 63
+let%span smodel'10 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 539 41 539 63
+let%span smodel'11 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 543 21 543 22
+let%span smodel'12 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 543 12 543 22
+let%span smodel'13 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 541 28 541 33
+let%span smodel'14 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 546 16 546 17
+let%span smodel'15 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 547 22 547 44
+let%span smodel'16 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 548 65 548 72
+let%span smodel'17 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 548 16 548 73
+let%span smodel'18 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 551 21 551 22
+let%span smodel'19 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 551 12 551 22
+let%span smodel'20 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 549 23 549 28
+let%span smodel'21 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 554 16 554 17
+let%span smodel'22 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 555 22 555 43
+let%span smodel'23 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 556 64 556 71
+let%span smodel'24 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 556 16 556 72
+let%span smodel'25 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 559 21 559 22
+let%span smodel'26 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 559 12 559 22
+let%span smodel'27 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 557 23 557 28
+let%span smodel'28 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 562 16 562 17
+let%span smodel'29 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 563 22 563 44
+let%span smodel'30 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 564 65 564 72
+let%span smodel'31 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 564 16 564 73
+let%span smodel'32 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 567 21 567 22
+let%span smodel'33 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 567 12 567 22
+let%span smodel'34 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 565 23 565 28
+let%span smodel'35 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 570 16 570 17
+let%span smodel'36 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 571 22 571 40
+let%span smodel'37 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 572 62 572 69
+let%span smodel'38 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 572 16 572 70
+let%span smodel'39 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 575 21 575 22
+let%span smodel'40 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 575 12 575 22
+let%span smodel'41 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 573 23 573 28
+let%span smodel'42 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 578 16 578 17
+let%span smodel'43 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 579 22 579 40
+let%span smodel'44 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 580 47 580 54
+let%span smodel'45 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 580 16 580 55
+let%span smodel'46 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 583 21 583 22
+let%span smodel'47 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 583 12 583 22
+let%span smodel'48 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 581 23 581 28
+let%span smodel'49 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 586 16 586 17
+let%span smodel'50 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 587 22 587 40
+let%span smodel'51 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 588 47 588 54
+let%span smodel'52 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 588 16 588 55
+let%span smodel'53 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 591 21 591 22
+let%span smodel'54 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 591 12 591 22
+let%span smodel'55 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 589 23 589 28
+let%span smodel'56 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 594 8 594 12
+let%span smodel'57 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 520 45 520 80
+let%span smodel'58 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 521 44 521 92
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 114 18 114 40
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 195 19 195 38
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 196 18 196 46
+let%span svec'2 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'3 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span sproofs = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 14 8 17 30
+let%span sproofs'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 86 8 107 44
+let%span sproofs'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 24 8 28 9
+let%span sproofs'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 35 8 46 9
+let%span sproofs'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 53 8 64 9
+let%span sproofs'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 71 8 79 9
+let%span sord = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 162 41 162 102
+let%span sord'0 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 168 41 168 99
+let%span sord'1 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 174 41 174 99
+let%span sord'2 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 180 41 180 102
+let%span sord'3 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 186 41 186 83
+let%span sord'4 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 192 42 192 59
+let%span sord'5 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 193 42 193 59
+let%span sord'6 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 194 41 194 58
+let%span sord'7 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 200 42 200 83
+let%span sord'8 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 201 41 201 85
+let%span sord'9 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 207 42 207 86
+let%span sord'10 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 208 41 208 82
+let%span sord'11 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 214 41 214 97
+let%span sord'12 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 296 16 302 17
+let%span sslice = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 148 20 148 37
+let%span sslice'0 = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 153 20 153 37
+
+use creusot.int.UInt64
+use seq.Seq
+use creusot.prelude.Any
+use int.Int
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+type t_VisibleRef = None | Dirty UInt64.t | Clean UInt64.t
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_VisibleRef_Global (self: t_Vec_VisibleRef_Global) : Seq.seq t_VisibleRef
+
+axiom view_Vec_VisibleRef_Global_spec:
+  forall self: t_Vec_VisibleRef_Global. [%#svec'2] Seq.length (view_Vec_VisibleRef_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_VisibleRef (self_: t_Vec_VisibleRef_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_VisibleRef_Global self_)}
+    (! return {result}) ]
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+type t_Option_usize = None'0 | Some'0 UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec'2] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_DirtyRecord (self_: t_Vec_DirtyRecord_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_DirtyRecord_Global self_)}
+    (! return {result}) ]
+
+type t_CleanRecord = { present'0: bool; id'0: t_Option_usize; key'0: UInt64.t; value'0: UInt64.t }
+
+function view_Vec_CleanRecord_Global (self: t_Vec_CleanRecord_Global) : Seq.seq t_CleanRecord
+
+axiom view_Vec_CleanRecord_Global_spec:
+  forall self: t_Vec_CleanRecord_Global. [%#svec'2] Seq.length (view_Vec_CleanRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_CleanRecord (self_: t_Vec_CleanRecord_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_CleanRecord_Global self_)}
+    (! return {result}) ]
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'2] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_DurableValue (self_: t_Vec_DurableValue_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_DurableValue_Global self_)}
+    (! return {result}) ]
+
+function view_Vec_bool_Global (self: t_Vec_bool_Global) : Seq.seq bool
+
+axiom view_Vec_bool_Global_spec: forall self: t_Vec_bool_Global. [%#svec'2] Seq.length (view_Vec_bool_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_bool (self_: t_Vec_bool_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_bool_Global self_)}
+    (! return {result}) ]
+
+predicate in_bounds_usize [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_VisibleRef) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize
+
+predicate has_value_usize [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_VisibleRef) (out: t_VisibleRef) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize
+
+let rec index_Vec_VisibleRef_Global (self_: t_Vec_VisibleRef_Global) (ix: UInt64.t) (return (x: t_VisibleRef)) =
+  {[@stop_split] [@expl:index requires] [%#svec'0] in_bounds_usize ix (view_Vec_VisibleRef_Global self_)}
+  any
+  [ return (result: t_VisibleRef) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'1] has_value_usize ix (view_Vec_VisibleRef_Global self_) result}
+    (! return {result}) ]
+
+let rec elim_Clean (_x: t_VisibleRef) (return (f0: UInt64.t)) = any
+  [ _k (f0: UInt64.t) -> {Clean f0 = _x} (! return {f0})
+  | _chk -> (! {[@expl:elim Clean] match _x with
+      | Clean _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec valid_cache (self: t_ModelConfig) (id'1: UInt64.t) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+let rec elim_Dirty (_x: t_VisibleRef) (return (f0: UInt64.t)) = any
+  [ _k (f0: UInt64.t) -> {Dirty f0 = _x} (! return {f0})
+  | _chk -> (! {[@expl:elim Dirty] match _x with
+      | Dirty _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec valid_write (self: t_ModelConfig) (id'1: UInt64.t) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+predicate in_bounds_usize'0 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_DirtyRecord) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize'0
+
+predicate has_value_usize'0 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_DirtyRecord) (out: t_DirtyRecord) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize'0
+
+let rec index_Vec_DirtyRecord_Global (self_: t_Vec_DirtyRecord_Global) (ix: UInt64.t) (return (x: t_DirtyRecord)) =
+  {[@stop_split] [@expl:index requires] [%#svec'0] in_bounds_usize'0 ix (view_Vec_DirtyRecord_Global self_)}
+  any
+  [ return (result: t_DirtyRecord) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'1] has_value_usize'0 ix (view_Vec_DirtyRecord_Global self_) result}
+    (! return {result}) ]
+
+let rec valid_dirty_record (self: t_ModelState) (config: t_ModelConfig) (record: t_DirtyRecord) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+predicate in_bounds_usize'1 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_CleanRecord) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize'1
+
+predicate has_value_usize'1 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_CleanRecord) (out: t_CleanRecord) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize'1
+
+let rec index_Vec_CleanRecord_Global (self_: t_Vec_CleanRecord_Global) (ix: UInt64.t) (return (x: t_CleanRecord)) =
+  {[@stop_split] [@expl:index requires] [%#svec'0] in_bounds_usize'1 ix (view_Vec_CleanRecord_Global self_)}
+  any
+  [ return (result: t_CleanRecord) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'1] has_value_usize'1 ix (view_Vec_CleanRecord_Global self_) result}
+    (! return {result}) ]
+
+let rec valid_clean_record (self: t_ModelState) (config: t_ModelConfig) (record: t_CleanRecord) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+predicate in_bounds_usize'2 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_DurableValue) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize'2
+
+predicate has_value_usize'2 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_DurableValue) (out: t_DurableValue) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize'2
+
+let rec index_Vec_DurableValue_Global (self_: t_Vec_DurableValue_Global) (ix: UInt64.t) (return (x: t_DurableValue)) =
+  {[@stop_split] [@expl:index requires] [%#svec'0] in_bounds_usize'2 ix (view_Vec_DurableValue_Global self_)}
+  any
+  [ return (result: t_DurableValue) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'1] has_value_usize'2 ix (view_Vec_DurableValue_Global self_) result}
+    (! return {result}) ]
+
+let rec valid_durable_value (self: t_ModelState) (config: t_ModelConfig) (value'2: t_DurableValue) (return (x: bool)) =
+  any [ return (result: bool) -> (! return {result}) ]
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec'2] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec len_usize (self_: t_Vec_usize_Global) (return (x: UInt64.t)) = any
+  [ return (result: UInt64.t) -> {[@stop_split] [@expl:len ensures] [%#svec] UInt64.t'int result
+    = Seq.length (view_Vec_usize_Global self_)}
+    (! return {result}) ]
+
+predicate in_bounds_usize'3 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq UInt64.t) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize'3
+
+predicate has_value_usize'3 [@inline:trivial] (self: UInt64.t) (seq: Seq.seq UInt64.t) (out: UInt64.t) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize'3
+
+let rec index_Vec_usize_Global (self_: t_Vec_usize_Global) (ix: UInt64.t) (return (x: UInt64.t)) =
+  {[@stop_split] [@expl:index requires] [%#svec'0] in_bounds_usize'3 ix (view_Vec_usize_Global self_)}
+  any
+  [ return (result: UInt64.t) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'1] has_value_usize'3 ix (view_Vec_usize_Global self_) result}
+    (! return {result}) ]
+
+type t_Ordering = Less | Equal | Greater
+
+function cmp_log_usize (self: UInt64.t) (o: UInt64.t) : t_Ordering = [%#sord'12] if UInt64.lt self o then
+    Less
+  else
+    if self = o then Equal else Greater
+
+
+function eq_cmp_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom eq_cmp_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'11] (x = y) = (cmp_log_usize x y = Equal)
+
+function antisym2_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym2_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'9] cmp_log_usize x y = Greater)
+    -> ([%#sord'10] cmp_log_usize y x = Less)
+
+function antisym1_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym1_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'7] cmp_log_usize x y = Less)
+    -> ([%#sord'8] cmp_log_usize y x = Greater)
+
+function trans_usize (x: UInt64.t) (y: UInt64.t) (z: UInt64.t) (o: t_Ordering) : ()
+
+axiom trans_usize_spec: forall x: UInt64.t, y: UInt64.t, z: UInt64.t, o: t_Ordering. ([%#sord'4] cmp_log_usize x y = o)
+    -> ([%#sord'5] cmp_log_usize y z = o) -> ([%#sord'6] cmp_log_usize x z = o)
+
+function refl_usize (x: UInt64.t) : ()
+
+axiom refl_usize_spec: forall x: UInt64.t. [%#sord'3] cmp_log_usize x x = Equal
+
+function cmp_gt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_gt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'2] UInt64.gt x y = (cmp_log_usize x y = Greater)
+
+function cmp_ge_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_ge_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'1] UInt64.ge x y = (cmp_log_usize x y <> Less)
+
+function cmp_lt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_lt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'0] UInt64.lt x y = (cmp_log_usize x y = Less)
+
+function cmp_le_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_le_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord] UInt64.le x y = (cmp_log_usize x y <> Greater)
+
+predicate valid_config [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 12 0 12 45] (cfg: t_ModelConfig) =
+  [%#sproofs] UInt64.gt cfg.key_count (0: UInt64.t)
+  /\ UInt64.gt cfg.value_count (0: UInt64.t)
+  /\ UInt64.gt cfg.max_write (0: UInt64.t) /\ UInt64.gt cfg.max_cache (0: UInt64.t)
+
+predicate visible_ref_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 22 0 22 68] (visible'0: t_VisibleRef) (cfg: t_ModelConfig) =
+  [%#sproofs'1] match visible'0 with
+    | None -> true
+    | Dirty id'1 -> UInt64.lt id'1 cfg.max_write
+    | Clean id'1 -> UInt64.lt id'1 cfg.max_cache
+    end
+
+function index_Vec_VisibleRef_Global'0 [@inline:trivial] (self: t_Vec_VisibleRef_Global) (ix: int) : t_VisibleRef =
+  [%#svec'3] Seq.get (view_Vec_VisibleRef_Global self) ix
+
+meta "rewrite_def" function index_Vec_VisibleRef_Global'0
+
+predicate dirty_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 33 0 33 69] (record: t_DirtyRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'2] if not record.present then
+    true
+  else
+    record.id <> None'0
+    /\ match record.id with
+      | Some'0 id'1 -> UInt64.lt id'1 cfg.max_write
+      /\ UInt64.lt record.key cfg.key_count /\ UInt64.lt record.value cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_DirtyRecord_Global'0 [@inline:trivial] (self: t_Vec_DirtyRecord_Global) (ix: int) : t_DirtyRecord =
+  [%#svec'3] Seq.get (view_Vec_DirtyRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_DirtyRecord_Global'0
+
+predicate clean_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 51 0 51 69] (record: t_CleanRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'3] if not record.present'0 then
+    true
+  else
+    record.id'0 <> None'0
+    /\ match record.id'0 with
+      | Some'0 id'1 -> UInt64.lt id'1 cfg.max_cache
+      /\ UInt64.lt record.key'0 cfg.key_count /\ UInt64.lt record.value'0 cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_CleanRecord_Global'0 [@inline:trivial] (self: t_Vec_CleanRecord_Global) (ix: int) : t_CleanRecord =
+  [%#svec'3] Seq.get (view_Vec_CleanRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_CleanRecord_Global'0
+
+predicate durable_value_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 69 0 69 70] (value'2: t_DurableValue) (cfg: t_ModelConfig) =
+  [%#sproofs'4] if not value'2.present'1 then
+    true
+  else
+    value'2.seq'1 <> None'0
+    /\ match value'2.seq'1 with
+      | Some'0 seq -> UInt64.lt seq cfg.max_write /\ UInt64.lt value'2.value'1 cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_DurableValue_Global'0 [@inline:trivial] (self: t_Vec_DurableValue_Global) (ix: int) : t_DurableValue
+ = [%#svec'3] Seq.get (view_Vec_DurableValue_Global self) ix
+
+meta "rewrite_def" function index_Vec_DurableValue_Global'0
+
+function index_Vec_usize_Global'0 [@inline:trivial] (self: t_Vec_usize_Global) (ix: int) : UInt64.t =
+  [%#svec'3] Seq.get (view_Vec_usize_Global self) ix
+
+meta "rewrite_def" function index_Vec_usize_Global'0
+
+predicate shape_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 84 0 84 60] (state: t_ModelState) (cfg: t_ModelConfig) =
+  [%#sproofs'0] Seq.length (view_Vec_VisibleRef_Global state.visible) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_store) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_hist) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_CleanRecord_Global state.cache_store) = UInt64.t'int cfg.max_cache
+  /\ Seq.length (view_Vec_DurableValue_Global state.durable) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_bool_Global state.created_dirty) = UInt64.t'int cfg.max_write
+  /\ UInt64.le state.next_write cfg.max_write
+  /\ UInt64.le state.next_cache cfg.max_cache
+  /\ (forall i: int. 0 <= i /\ i < Seq.length (view_Vec_VisibleRef_Global state.visible)
+    -> visible_ref_ok (index_Vec_VisibleRef_Global'0 state.visible i) cfg
+    /\ (forall i'0: int. 0 <= i'0 /\ i'0 < Seq.length (view_Vec_DirtyRecord_Global state.write_store)
+      -> dirty_record_ok (index_Vec_DirtyRecord_Global'0 state.write_store i'0) cfg
+      /\ (forall i'1: int. 0 <= i'1 /\ i'1 < Seq.length (view_Vec_DirtyRecord_Global state.write_hist)
+        -> dirty_record_ok (index_Vec_DirtyRecord_Global'0 state.write_hist i'1) cfg
+        /\ (forall i'2: int. 0 <= i'2 /\ i'2 < Seq.length (view_Vec_CleanRecord_Global state.cache_store)
+          -> clean_record_ok (index_Vec_CleanRecord_Global'0 state.cache_store i'2) cfg
+          /\ (forall i'3: int. 0 <= i'3 /\ i'3 < Seq.length (view_Vec_DurableValue_Global state.durable)
+            -> durable_value_ok (index_Vec_DurableValue_Global'0 state.durable i'3) cfg
+            /\ (forall i'4: int. 0 <= i'4 /\ i'4 < Seq.length (view_Vec_usize_Global state.dirty_q)
+              -> UInt64.lt (index_Vec_usize_Global'0 state.dirty_q i'4) cfg.max_write
+              /\ (forall i'5: int. 0 <= i'5 /\ i'5 < Seq.length (view_Vec_usize_Global state.flushed)
+                -> UInt64.lt (index_Vec_usize_Global'0 state.flushed i'5) cfg.max_write)))))))
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec type_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 522 4 522 54] (self: t_ModelState)
+  (config: t_ModelConfig) (return (x: bool)) =
+  {[@stop_split] [@expl:type_ok requires] [%#smodel'57] valid_config config}
+  (! bb0
+  [ bb0 = s0
+    [ s0 = len_VisibleRef [%#smodel] {self.visible} (fun (_x: UInt64.t) -> [ &_10 <- _x ] s1)
+    | s1 = [ &_9 <- _10 <> config.key_count ] s2
+    | s2 = any [ br0 -> {_9 = false} (! bb3) | br1 -> {_9} (! bb22) ] ]
+  | bb3 = s0
+    [ s0 = len_DirtyRecord [%#smodel'0] {self.write_store} (fun (_x: UInt64.t) -> [ &_14 <- _x ] s1)
+    | s1 = [ &_13 <- _14 <> config.max_write ] s2
+    | s2 = any [ br0 -> {_13 = false} (! bb6) | br1 -> {_13} (! bb22) ] ]
+  | bb6 = s0
+    [ s0 = len_DirtyRecord [%#smodel'1] {self.write_hist} (fun (_x: UInt64.t) -> [ &_18 <- _x ] s1)
+    | s1 = [ &_17 <- _18 <> config.max_write ] s2
+    | s2 = any [ br0 -> {_17 = false} (! bb9) | br1 -> {_17} (! bb22) ] ]
+  | bb9 = s0
+    [ s0 = len_CleanRecord [%#smodel'2] {self.cache_store} (fun (_x: UInt64.t) -> [ &_22 <- _x ] s1)
+    | s1 = [ &_21 <- _22 <> config.max_cache ] s2
+    | s2 = any [ br0 -> {_21 = false} (! bb12) | br1 -> {_21} (! bb22) ] ]
+  | bb12 = s0
+    [ s0 = len_DurableValue [%#smodel'3] {self.durable} (fun (_x: UInt64.t) -> [ &_26 <- _x ] s1)
+    | s1 = [ &_25 <- _26 <> config.key_count ] s2
+    | s2 = any [ br0 -> {_25 = false} (! bb15) | br1 -> {_25} (! bb22) ] ]
+  | bb15 = s0
+    [ s0 = len_bool [%#smodel'4] {self.created_dirty} (fun (_x: UInt64.t) -> [ &_30 <- _x ] s1)
+    | s1 = [ &_29 <- _30 <> config.max_write ] s2
+    | s2 = any [ br0 -> {_29 = false} (! bb18) | br1 -> {_29} (! bb22) ] ]
+  | bb18 = s0
+    [ s0 = [ &_33 <- UInt64.gt self.next_write config.max_write ] s1
+    | s1 = any [ br0 -> {_33 = false} (! bb20) | br1 -> {_33} (! bb22) ] ]
+  | bb20 = s0
+    [ s0 = [ &_36 <- UInt64.gt self.next_cache config.max_cache ] s1
+    | s1 = any [ br0 -> {_36 = false} (! bb23) | br1 -> {_36} (! bb22) ] ]
+  | bb22 = s0 [ s0 = [ &_ret <- [%#smodel'5] false ] s1 | s1 = return {_ret} ]
+  | bb23 = s0 [ s0 = [ &index <- [%#smodel'6] (0: UInt64.t) ] s1 | s1 = bb25 ]
+  | bb25 = bb25
+    [ bb25 = (! s0
+      [ s0 = len_VisibleRef [%#smodel'7] {self.visible} (fun (_x: UInt64.t) -> [ &_45 <- _x ] s1)
+      | s1 = [ &_43 <- UInt64.lt index _45 ] s2
+      | s2 = any [ br0 -> {_43 = false} (! bb43) | br1 -> {_43} (! bb27) ] ])
+      [ bb27 = s0
+        [ s0 = index_Vec_VisibleRef_Global [%#smodel'8] {self.visible} {index}
+            (fun (_x: t_VisibleRef) -> [ &_48 <- _x ] s1)
+        | s1 = any
+          [ br0 -> {_48 = None} (! bb42)
+          | br1 (x0: UInt64.t) -> {_48 = Dirty x0} (! bb34)
+          | br2 (x0: UInt64.t) -> {_48 = Clean x0} (! bb33) ] ]
+      | bb33 = s0
+        [ s0 = elim_Clean {_48} (fun (r0: UInt64.t) -> [ &id'4 <- r0 ] s1)
+        | s1 = valid_cache [%#smodel'9] {config} {id'4} (fun (_x: bool) -> [ &_61 <- _x ] s2)
+        | s2 = any [ br0 -> {_61 = false} (! bb29) | br1 -> {_61} (! bb40) ] ]
+      | bb40 = s0 [ s0 = elim_Clean {_48} (fun (r0: UInt64.t) -> [ &id'3 <- r0 ] s1) | s1 = bb42 ]
+      | bb34 = s0
+        [ s0 = elim_Dirty {_48} (fun (r0: UInt64.t) -> [ &id'2 <- r0 ] s1)
+        | s1 = valid_write [%#smodel'10] {config} {id'2} (fun (_x: bool) -> [ &_56 <- _x ] s2)
+        | s2 = any [ br0 -> {_56 = false} (! bb29) | br1 -> {_56} (! bb37) ] ]
+      | bb37 = s0 [ s0 = elim_Dirty {_48} (fun (r0: UInt64.t) -> [ &id'1 <- r0 ] s1) | s1 = bb42 ]
+      | bb42 = s0
+        [ s0 = UInt64.add [%#smodel'12] {index} {[%#smodel'11] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb25 ] ] ]
+  | bb29 = s0 [ s0 = [ &_ret <- [%#smodel'13] false ] s1 | s1 = return {_ret} ]
+  | bb43 = s0 [ s0 = [ &index <- [%#smodel'14] (0: UInt64.t) ] s1 | s1 = bb45 ]
+  | bb45 = bb45
+    [ bb45 = (! s0
+      [ s0 = len_DirtyRecord [%#smodel'15] {self.write_store} (fun (_x: UInt64.t) -> [ &_71 <- _x ] s1)
+      | s1 = [ &_69 <- UInt64.lt index _71 ] s2
+      | s2 = any [ br0 -> {_69 = false} (! bb52) | br1 -> {_69} (! bb47) ] ])
+      [ bb47 = s0
+        [ s0 = index_Vec_DirtyRecord_Global [%#smodel'16] {self.write_store} {index}
+            (fun (_x: t_DirtyRecord) -> [ &_79 <- _x ] s1)
+        | s1 = [ &_78 <- _79 ] s2
+        | s2 = valid_dirty_record [%#smodel'17] {self} {config} {_78} (fun (_x: bool) -> [ &_74 <- _x ] s3)
+        | s3 = any [ br0 -> {_74 = false} (! bb51) | br1 -> {_74} (! bb50) ] ]
+      | bb50 = s0
+        [ s0 = UInt64.add [%#smodel'19] {index} {[%#smodel'18] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb45 ] ] ]
+  | bb51 = s0 [ s0 = [ &_ret <- [%#smodel'20] false ] s1 | s1 = return {_ret} ]
+  | bb52 = s0 [ s0 = [ &index <- [%#smodel'21] (0: UInt64.t) ] s1 | s1 = bb54 ]
+  | bb54 = bb54
+    [ bb54 = (! s0
+      [ s0 = len_DirtyRecord [%#smodel'22] {self.write_hist} (fun (_x: UInt64.t) -> [ &_89 <- _x ] s1)
+      | s1 = [ &_87 <- UInt64.lt index _89 ] s2
+      | s2 = any [ br0 -> {_87 = false} (! bb61) | br1 -> {_87} (! bb56) ] ])
+      [ bb56 = s0
+        [ s0 = index_Vec_DirtyRecord_Global [%#smodel'23] {self.write_hist} {index}
+            (fun (_x: t_DirtyRecord) -> [ &_97 <- _x ] s1)
+        | s1 = [ &_96 <- _97 ] s2
+        | s2 = valid_dirty_record [%#smodel'24] {self} {config} {_96} (fun (_x: bool) -> [ &_92 <- _x ] s3)
+        | s3 = any [ br0 -> {_92 = false} (! bb60) | br1 -> {_92} (! bb59) ] ]
+      | bb59 = s0
+        [ s0 = UInt64.add [%#smodel'26] {index} {[%#smodel'25] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb54 ] ] ]
+  | bb60 = s0 [ s0 = [ &_ret <- [%#smodel'27] false ] s1 | s1 = return {_ret} ]
+  | bb61 = s0 [ s0 = [ &index <- [%#smodel'28] (0: UInt64.t) ] s1 | s1 = bb63 ]
+  | bb63 = bb63
+    [ bb63 = (! s0
+      [ s0 = len_CleanRecord [%#smodel'29] {self.cache_store} (fun (_x: UInt64.t) -> [ &_107 <- _x ] s1)
+      | s1 = [ &_105 <- UInt64.lt index _107 ] s2
+      | s2 = any [ br0 -> {_105 = false} (! bb70) | br1 -> {_105} (! bb65) ] ])
+      [ bb65 = s0
+        [ s0 = index_Vec_CleanRecord_Global [%#smodel'30] {self.cache_store} {index}
+            (fun (_x: t_CleanRecord) -> [ &_115 <- _x ] s1)
+        | s1 = [ &_114 <- _115 ] s2
+        | s2 = valid_clean_record [%#smodel'31] {self} {config} {_114} (fun (_x: bool) -> [ &_110 <- _x ] s3)
+        | s3 = any [ br0 -> {_110 = false} (! bb69) | br1 -> {_110} (! bb68) ] ]
+      | bb68 = s0
+        [ s0 = UInt64.add [%#smodel'33] {index} {[%#smodel'32] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb63 ] ] ]
+  | bb69 = s0 [ s0 = [ &_ret <- [%#smodel'34] false ] s1 | s1 = return {_ret} ]
+  | bb70 = s0 [ s0 = [ &index <- [%#smodel'35] (0: UInt64.t) ] s1 | s1 = bb72 ]
+  | bb72 = bb72
+    [ bb72 = (! s0
+      [ s0 = len_DurableValue [%#smodel'36] {self.durable} (fun (_x: UInt64.t) -> [ &_125 <- _x ] s1)
+      | s1 = [ &_123 <- UInt64.lt index _125 ] s2
+      | s2 = any [ br0 -> {_123 = false} (! bb79) | br1 -> {_123} (! bb74) ] ])
+      [ bb74 = s0
+        [ s0 = index_Vec_DurableValue_Global [%#smodel'37] {self.durable} {index}
+            (fun (_x: t_DurableValue) -> [ &_133 <- _x ] s1)
+        | s1 = [ &_132 <- _133 ] s2
+        | s2 = valid_durable_value [%#smodel'38] {self} {config} {_132} (fun (_x: bool) -> [ &_128 <- _x ] s3)
+        | s3 = any [ br0 -> {_128 = false} (! bb78) | br1 -> {_128} (! bb77) ] ]
+      | bb77 = s0
+        [ s0 = UInt64.add [%#smodel'40] {index} {[%#smodel'39] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb72 ] ] ]
+  | bb78 = s0 [ s0 = [ &_ret <- [%#smodel'41] false ] s1 | s1 = return {_ret} ]
+  | bb79 = s0 [ s0 = [ &index <- [%#smodel'42] (0: UInt64.t) ] s1 | s1 = bb81 ]
+  | bb81 = bb81
+    [ bb81 = (! s0
+      [ s0 = len_usize [%#smodel'43] {self.dirty_q} (fun (_x: UInt64.t) -> [ &_143 <- _x ] s1)
+      | s1 = [ &_141 <- UInt64.lt index _143 ] s2
+      | s2 = any [ br0 -> {_141 = false} (! bb88) | br1 -> {_141} (! bb83) ] ])
+      [ bb83 = s0
+        [ s0 = index_Vec_usize_Global [%#smodel'44] {self.dirty_q} {index} (fun (_x: UInt64.t) -> [ &_149 <- _x ] s1)
+        | s1 = valid_write [%#smodel'45] {config} {_149} (fun (_x: bool) -> [ &_146 <- _x ] s2)
+        | s2 = any [ br0 -> {_146 = false} (! bb87) | br1 -> {_146} (! bb86) ] ]
+      | bb86 = s0
+        [ s0 = UInt64.add [%#smodel'47] {index} {[%#smodel'46] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb81 ] ] ]
+  | bb87 = s0 [ s0 = [ &_ret <- [%#smodel'48] false ] s1 | s1 = return {_ret} ]
+  | bb88 = s0 [ s0 = [ &index <- [%#smodel'49] (0: UInt64.t) ] s1 | s1 = bb90 ]
+  | bb90 = bb90
+    [ bb90 = (! s0
+      [ s0 = len_usize [%#smodel'50] {self.flushed} (fun (_x: UInt64.t) -> [ &_159 <- _x ] s1)
+      | s1 = [ &_157 <- UInt64.lt index _159 ] s2
+      | s2 = any [ br0 -> {_157 = false} (! bb97) | br1 -> {_157} (! bb92) ] ])
+      [ bb92 = s0
+        [ s0 = index_Vec_usize_Global [%#smodel'51] {self.flushed} {index} (fun (_x: UInt64.t) -> [ &_165 <- _x ] s1)
+        | s1 = valid_write [%#smodel'52] {config} {_165} (fun (_x: bool) -> [ &_162 <- _x ] s2)
+        | s2 = any [ br0 -> {_162 = false} (! bb96) | br1 -> {_162} (! bb95) ] ]
+      | bb95 = s0
+        [ s0 = UInt64.add [%#smodel'54] {index} {[%#smodel'53] (1: UInt64.t)}
+            (fun (_x: UInt64.t) -> [ &index <- _x ] s1)
+        | s1 = bb90 ] ] ]
+  | bb96 = s0 [ s0 = [ &_ret <- [%#smodel'55] false ] s1 | s1 = return {_ret} ]
+  | bb97 = s0 [ s0 = [ &_ret <- [%#smodel'56] true ] s1 | s1 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l ()
+  | & self: t_ModelState = self
+  | & config: t_ModelConfig = config
+  | & _9: bool = Any.any_l ()
+  | & _10: UInt64.t = Any.any_l ()
+  | & _13: bool = Any.any_l ()
+  | & _14: UInt64.t = Any.any_l ()
+  | & _17: bool = Any.any_l ()
+  | & _18: UInt64.t = Any.any_l ()
+  | & _21: bool = Any.any_l ()
+  | & _22: UInt64.t = Any.any_l ()
+  | & _25: bool = Any.any_l ()
+  | & _26: UInt64.t = Any.any_l ()
+  | & _29: bool = Any.any_l ()
+  | & _30: UInt64.t = Any.any_l ()
+  | & _33: bool = Any.any_l ()
+  | & _36: bool = Any.any_l ()
+  | & index: UInt64.t = Any.any_l ()
+  | & _43: bool = Any.any_l ()
+  | & _45: UInt64.t = Any.any_l ()
+  | & _48: t_VisibleRef = Any.any_l ()
+  | & id'1: UInt64.t = Any.any_l ()
+  | & id'2: UInt64.t = Any.any_l ()
+  | & _56: bool = Any.any_l ()
+  | & id'3: UInt64.t = Any.any_l ()
+  | & id'4: UInt64.t = Any.any_l ()
+  | & _61: bool = Any.any_l ()
+  | & _69: bool = Any.any_l ()
+  | & _71: UInt64.t = Any.any_l ()
+  | & _74: bool = Any.any_l ()
+  | & _78: t_DirtyRecord = Any.any_l ()
+  | & _79: t_DirtyRecord = Any.any_l ()
+  | & _87: bool = Any.any_l ()
+  | & _89: UInt64.t = Any.any_l ()
+  | & _92: bool = Any.any_l ()
+  | & _96: t_DirtyRecord = Any.any_l ()
+  | & _97: t_DirtyRecord = Any.any_l ()
+  | & _105: bool = Any.any_l ()
+  | & _107: UInt64.t = Any.any_l ()
+  | & _110: bool = Any.any_l ()
+  | & _114: t_CleanRecord = Any.any_l ()
+  | & _115: t_CleanRecord = Any.any_l ()
+  | & _123: bool = Any.any_l ()
+  | & _125: UInt64.t = Any.any_l ()
+  | & _128: bool = Any.any_l ()
+  | & _132: t_DurableValue = Any.any_l ()
+  | & _133: t_DurableValue = Any.any_l ()
+  | & _141: bool = Any.any_l ()
+  | & _143: UInt64.t = Any.any_l ()
+  | & _146: bool = Any.any_l ()
+  | & _149: UInt64.t = Any.any_l ()
+  | & _157: bool = Any.any_l ()
+  | & _159: UInt64.t = Any.any_l ()
+  | & _162: bool = Any.any_l ()
+  | & _165: UInt64.t = Any.any_l () ])
+  [ return (result: bool) -> {[@stop_split] [@expl:type_ok ensures] [%#smodel'58] result = shape_ok self config}
+    (! return {result}) ]

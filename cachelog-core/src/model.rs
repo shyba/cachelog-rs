@@ -1,22 +1,34 @@
+#[cfg(not(creusot))]
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(all(feature = "serde", not(creusot)))]
 use serde::{Deserialize, Serialize};
+#[cfg(not(creusot))]
 use thiserror::Error;
+
+#[cfg(creusot)]
+use creusot_std::model::DeepModel;
+#[cfg(feature = "creusot")]
+use creusot_std::macros::{ensures, requires};
 
 pub type KeyId = usize;
 pub type ValueId = usize;
 pub type WriteId = usize;
 pub type CacheId = usize;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "id")]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "kind", content = "id"))]
 pub enum VisibleRef {
     None,
     Dirty(WriteId),
     Clean(CacheId),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DirtyRecord {
     pub present: bool,
     pub id: Option<WriteId>,
@@ -24,7 +36,9 @@ pub struct DirtyRecord {
     pub value: ValueId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CleanRecord {
     pub present: bool,
     pub id: Option<CacheId>,
@@ -32,14 +46,18 @@ pub struct CleanRecord {
     pub value: ValueId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DurableValue {
     pub present: bool,
     pub value: ValueId,
     pub seq: Option<WriteId>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ModelConfig {
     pub key_count: usize,
     pub value_count: usize,
@@ -83,7 +101,9 @@ impl ModelConfig {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelState {
     pub visible: Vec<VisibleRef>,
     pub write_store: Vec<DirtyRecord>,
@@ -99,35 +119,45 @@ pub struct ModelState {
     pub bad_read: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg(not(creusot))]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ComparableDirtyRecord {
     pub id: WriteId,
     pub key: KeyId,
     pub value: ValueId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg(not(creusot))]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ComparableCleanRecord {
     pub id: CacheId,
     pub key: KeyId,
     pub value: ValueId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg(not(creusot))]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ComparableDurableValue {
     pub key: KeyId,
     pub value: ValueId,
     pub seq: WriteId,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd)]
-#[serde(tag = "kind", content = "id")]
+#[cfg(not(creusot))]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "kind", content = "id"))]
 pub enum ComparableVisibleRef {
     Dirty(WriteId),
     Clean(CacheId),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg(not(creusot))]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ComparableState {
     pub visible: BTreeMap<KeyId, ComparableVisibleRef>,
     pub write_store: BTreeMap<WriteId, ComparableDirtyRecord>,
@@ -143,8 +173,10 @@ pub struct ComparableState {
     pub bad_read: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "action", rename_all = "camelCase")]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "action", rename_all = "camelCase"))]
 pub enum ModelStep {
     WriterWrite { key: KeyId, value: ValueId },
     FlusherFlushNext,
@@ -156,26 +188,30 @@ pub enum ModelStep {
     Crash,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct InvariantReport {
     pub failures: Vec<&'static str>,
 }
 
 impl InvariantReport {
     pub fn is_ok(&self) -> bool {
-        self.failures.is_empty()
+        self.failures.len() == 0
     }
 }
 
-#[derive(Debug, Error, Eq, PartialEq)]
+#[cfg_attr(not(creusot), derive(Error))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ModelError {
-    #[error("key {0} is out of range for config")]
+    #[cfg_attr(not(creusot), error("key {0} is out of range for config"))]
     InvalidKey(KeyId),
-    #[error("value {0} is out of range for config")]
+    #[cfg_attr(not(creusot), error("value {0} is out of range for config"))]
     InvalidValue(ValueId),
-    #[error("write id {0} is out of range for config")]
+    #[cfg_attr(not(creusot), error("write id {0} is out of range for config"))]
     InvalidWriteId(WriteId),
-    #[error("cache id {0} is out of range for config")]
+    #[cfg_attr(not(creusot), error("cache id {0} is out of range for config"))]
     InvalidCacheId(CacheId),
 }
 
@@ -276,6 +312,11 @@ impl ModelState {
         }
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
+    #[cfg_attr(feature = "creusot", requires(value < config.value_count))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn writer_write(
         &mut self,
         config: ModelConfig,
@@ -298,6 +339,9 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn flusher_flush_next(&mut self, config: ModelConfig) -> Result<(), ModelError> {
         if self.crashed {
             return Ok(());
@@ -314,12 +358,16 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(id < config.max_write))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn flusher_drop(&mut self, config: ModelConfig, id: WriteId) -> Result<(), ModelError> {
         self.check_write(config, id)?;
         if self.crashed {
             return Ok(());
         }
-        if self.flushed.contains(&id) && self.write_store[id].present {
+        if contains_id(&self.flushed, id) && self.write_store[id].present {
             self.write_store[id] = DirtyRecord::absent();
             for visible in &mut self.visible {
                 if *visible == VisibleRef::Dirty(id) {
@@ -330,6 +378,10 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn cache_insert(&mut self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {
         self.check_key(config, key)?;
         if self.crashed || self.next_cache >= config.max_cache {
@@ -344,6 +396,10 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(id < config.max_cache))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn cache_drop_record(
         &mut self,
         config: ModelConfig,
@@ -359,6 +415,10 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(id < config.max_cache))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn cache_cleanup_visible(
         &mut self,
         config: ModelConfig,
@@ -378,6 +438,10 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn reader_step(&mut self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {
         self.check_key(config, key)?;
         if self.crashed {
@@ -401,6 +465,9 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
     pub fn crash(&mut self, config: ModelConfig) -> Result<(), ModelError> {
         if self.crashed {
             return Ok(());
@@ -417,6 +484,7 @@ impl ModelState {
         Ok(())
     }
 
+    #[cfg(not(creusot))]
     pub fn comparable(&self) -> ComparableState {
         ComparableState::from(self)
     }
@@ -449,49 +517,97 @@ impl ModelState {
         report
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::shape_ok(*self, config)))]
     pub fn type_ok(&self, config: ModelConfig) -> bool {
-        self.visible.len() == config.key_count
-            && self.write_store.len() == config.max_write
-            && self.write_hist.len() == config.max_write
-            && self.cache_store.len() == config.max_cache
-            && self.durable.len() == config.key_count
-            && self.created_dirty.len() == config.max_write
-            && self.next_write <= config.max_write
-            && self.next_cache <= config.max_cache
-            && self.visible.iter().all(|entry| match *entry {
-                VisibleRef::None => true,
-                VisibleRef::Dirty(id) => config.valid_write(id),
-                VisibleRef::Clean(id) => config.valid_cache(id),
-            })
-            && self
-                .write_store
-                .iter()
-                .all(|record| self.valid_dirty_record(config, record))
-            && self
-                .write_hist
-                .iter()
-                .all(|record| self.valid_dirty_record(config, record))
-            && self
-                .cache_store
-                .iter()
-                .all(|record| self.valid_clean_record(config, record))
-            && self
-                .durable
-                .iter()
-                .all(|value| self.valid_durable_value(config, value))
-            && self.dirty_q.iter().all(|&id| config.valid_write(id))
-            && self.flushed.iter().all(|&id| config.valid_write(id))
+        if self.visible.len() != config.key_count
+            || self.write_store.len() != config.max_write
+            || self.write_hist.len() != config.max_write
+            || self.cache_store.len() != config.max_cache
+            || self.durable.len() != config.key_count
+            || self.created_dirty.len() != config.max_write
+            || self.next_write > config.max_write
+            || self.next_cache > config.max_cache
+        {
+            return false;
+        }
+
+        let mut index = 0;
+        while index < self.visible.len() {
+            match self.visible[index] {
+                VisibleRef::None => {}
+                VisibleRef::Dirty(id) if config.valid_write(id) => {}
+                VisibleRef::Clean(id) if config.valid_cache(id) => {}
+                _ => return false,
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.write_store.len() {
+            if !self.valid_dirty_record(config, &self.write_store[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.write_hist.len() {
+            if !self.valid_dirty_record(config, &self.write_hist[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.cache_store.len() {
+            if !self.valid_clean_record(config, &self.cache_store[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.durable.len() {
+            if !self.valid_durable_value(config, &self.durable[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.dirty_q.len() {
+            if !config.valid_write(self.dirty_q[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        index = 0;
+        while index < self.flushed.len() {
+            if !config.valid_write(self.flushed[index]) {
+                return false;
+            }
+            index += 1;
+        }
+
+        true
     }
 
     pub fn dirty_refs_live(&self, config: ModelConfig) -> bool {
-        self.visible.iter().all(|visible| match *visible {
-            VisibleRef::None | VisibleRef::Clean(_) => true,
-            VisibleRef::Dirty(id) => {
-                config.valid_write(id)
-                    && self.write_store[id].present
-                    && self.write_store[id].id == Some(id)
+        let mut index = 0;
+        while index < self.visible.len() {
+            if let VisibleRef::Dirty(id) = self.visible[index] {
+                if !config.valid_write(id)
+                    || !self.write_store[id].present
+                    || self.write_store[id].id != Some(id)
+                {
+                    return false;
+                }
             }
-        })
+            index += 1;
+        }
+        true
     }
 
     pub fn durable_matches_flushed(&self, config: ModelConfig) -> bool {
@@ -502,13 +618,19 @@ impl ModelState {
         if self.crashed {
             return true;
         }
-        self.created_dirty.iter().enumerate().all(|(id, created)| {
-            !*created
-                || self.dirty_q.contains(&id)
-                || self.flushed.contains(&id)
-                || self.visible.contains(&VisibleRef::Dirty(id))
-                || self.write_store[id].present
-        })
+        let mut id = 0;
+        while id < self.created_dirty.len() {
+            if self.created_dirty[id]
+                && !contains_id(&self.dirty_q, id)
+                && !contains_id(&self.flushed, id)
+                && !contains_visible_dirty(&self.visible, id)
+                && !self.write_store[id].present
+            {
+                return false;
+            }
+            id += 1;
+        }
+        true
     }
 
     fn check_key(&self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {
@@ -588,6 +710,7 @@ impl ModelState {
     }
 }
 
+#[cfg(not(creusot))]
 impl From<&ModelState> for ComparableState {
     fn from(state: &ModelState) -> Self {
         let visible = state
@@ -697,8 +820,37 @@ impl From<&ModelState> for ComparableState {
     }
 }
 
+fn contains_id(items: &[usize], needle: usize) -> bool {
+    let mut index = 0;
+    while index < items.len() {
+        if items[index] == needle {
+            return true;
+        }
+        index += 1;
+    }
+    false
+}
+
+fn contains_visible_dirty(items: &[VisibleRef], needle: WriteId) -> bool {
+    let mut index = 0;
+    while index < items.len() {
+        if items[index] == VisibleRef::Dirty(needle) {
+            return true;
+        }
+        index += 1;
+    }
+    false
+}
+
 fn strictly_increasing(items: &[usize]) -> bool {
-    items.windows(2).all(|pair| pair[0] < pair[1])
+    let mut index = 1;
+    while index < items.len() {
+        if items[index - 1] >= items[index] {
+            return false;
+        }
+        index += 1;
+    }
+    true
 }
 
 fn apply_flushed(
@@ -833,6 +985,22 @@ mod tests {
 
         assert_eq!(state.visible[0], VisibleRef::None);
         assert!(!state.write_store[0].present);
+        assert_invariants(&state, cfg);
+    }
+
+    #[test]
+    fn flusher_drop_of_old_dirty_does_not_clear_newer_visible_dirty_ref() {
+        let cfg = ModelConfig::new(2, 3, 4, 2);
+        let mut state = ModelState::new(cfg);
+
+        state.writer_write(cfg, 0, 1).unwrap();
+        state.writer_write(cfg, 0, 2).unwrap();
+        state.flusher_flush_next(cfg).unwrap();
+        state.flusher_drop(cfg, 0).unwrap();
+
+        assert_eq!(state.visible[0], VisibleRef::Dirty(1));
+        assert!(!state.write_store[0].present);
+        assert!(state.write_store[1].present);
         assert_invariants(&state, cfg);
     }
 

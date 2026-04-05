@@ -1,0 +1,29 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 219 4 219 27 *)
+
+(* model::DirtyRecord *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 221 21 221 26
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 223 17 223 18
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 224 19 224 20
+
+use creusot.int.UInt64
+use creusot.prelude.Any
+
+type t_Option_usize = None | Some UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec absent [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 219 4 219 27] (return (x: t_DirtyRecord)) =
+  (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_1 <- None ] s1
+    | s1 = [ &_ret <- { present = ([%#smodel] false);
+                        id = _1;
+                        key = ([%#smodel'0] (0: UInt64.t));
+                        value = ([%#smodel'1] (0: UInt64.t)) } ] s2
+    | s2 = return {_ret} ] ] [ & _ret: t_DirtyRecord = Any.any_l () | & _1: t_Option_usize = Any.any_l () ])
+  [ return (result: t_DirtyRecord) -> (! return {result}) ]

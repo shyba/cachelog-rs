@@ -1,0 +1,40 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 106 23 106 25 *)
+
+(* <model::ModelState as std::cmp::Eq> *)
+
+use creusot.prelude.Any
+use creusot.int.UInt64
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec assert_fields_are_eq_ModelState [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 106 23 106 25]
+  (self: t_ModelState) (return (x: ())) = (! bb0
+  [ bb0 = return {_ret} ] [ & _ret: () = Any.any_l () ]) [ return (result: ()) -> (! return {result}) ]

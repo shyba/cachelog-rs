@@ -1,0 +1,16 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 206 16 206 18 *)
+
+(* <model::ModelError as std::cmp::Eq> *)
+
+use creusot.prelude.Any
+use creusot.int.UInt64
+
+type t_ModelError = InvalidKey UInt64.t | InvalidValue UInt64.t | InvalidWriteId UInt64.t | InvalidCacheId UInt64.t
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec assert_fields_are_eq_ModelError [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 206 16 206 18]
+  (self: t_ModelError) (return (x: ())) = (! bb0
+  [ bb0 = return {_ret} ] [ & _ret: () = Any.any_l () ]) [ return (result: ()) -> (! return {result}) ]

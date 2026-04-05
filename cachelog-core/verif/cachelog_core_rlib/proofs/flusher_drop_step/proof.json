@@ -1,0 +1,9 @@
+{
+  "profile": [],
+  "proofs": {
+    "Coma": {
+      "vc_flusher_drop": { "prover": "alt-ergo", "time": 0.039 },
+      "vc_flusher_drop_step": { "prover": "alt-ergo", "time": 0.027 }
+    }
+  }
+}

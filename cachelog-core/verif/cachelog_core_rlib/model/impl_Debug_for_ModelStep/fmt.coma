@@ -1,0 +1,305 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 178 16 178 21 *)
+
+(* <model::ModelStep as std::fmt::Debug> *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 178 16 178 21
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 187 17 187 27
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 186 26 186 37
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 185 22 185 33
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 184 18 184 28
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 183 18 183 29
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 181 18 181 28
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 181 30 181 44
+let%span sfmt = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 8 26 8 30
+let%span sfmt'0 = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 7 19 7 23
+let%span sfmt'1 = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 12 20 12 24
+let%span sfmt'2 = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 10 19 10 23
+let%span sfmt'3 = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 20 20 20 24
+let%span sfmt'4 = "/tmp/creusot-install-check/creusot-std/src/std/fmt.rs" 18 19 18 23
+let%span sinvariant = "/tmp/creusot-install-check/creusot-std/src/invariant.rs" 93 20 93 44
+
+use creusot.int.UInt64
+use creusot.prelude.MutBorrow
+use creusot.prelude.Any
+
+type t_ModelStep =
+  | WriterWrite UInt64.t UInt64.t
+  | FlusherFlushNext
+  | FlusherDrop UInt64.t
+  | CacheInsert UInt64.t
+  | CacheDropRecord UInt64.t
+  | CacheCleanupVisible UInt64.t
+  | ReaderStep UInt64.t
+  | Crash
+
+type t_Formatter
+
+predicate inv_Formatter (_1: t_Formatter)
+
+type t_Result_unit_Error = Ok () | Err ()
+
+predicate invariant_refmut_Formatter [@inline:trivial] (self: MutBorrow.t t_Formatter) =
+  [%#sinvariant] inv_Formatter self.current /\ inv_Formatter self.final
+
+meta "rewrite_def" predicate invariant_refmut_Formatter
+
+predicate inv_refmut_Formatter [@inline:trivial] (_1: MutBorrow.t t_Formatter) = invariant_refmut_Formatter _1
+
+meta "rewrite_def" predicate inv_refmut_Formatter
+
+let rec write_str (self_: MutBorrow.t t_Formatter) (data: string) (return (x: t_Result_unit_Error)) =
+  {[@stop_split] [@expl:write_str 'self_' type invariant] [%#sfmt] inv_refmut_Formatter self_}
+  any [ return (result: t_Result_unit_Error) -> (! return {result}) ]
+
+predicate resolve_refmut_Formatter [@inline:trivial] (_1: MutBorrow.t t_Formatter) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_Formatter
+
+let rec elim_ReaderStep (_x: t_ModelStep) (return (key: UInt64.t)) = any
+  [ _k (key: UInt64.t) -> {ReaderStep key = _x} (! return {key})
+  | _chk -> (! {[@expl:elim ReaderStep] match _x with
+      | ReaderStep _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+type dyn_Debug
+
+function dyn_Debug_of_ref_usize (x: UInt64.t) : dyn_Debug
+
+let rec debug_struct_field1_finish (self_: MutBorrow.t t_Formatter) (name: string) (name1: string) (value1: dyn_Debug)
+  (return (x: t_Result_unit_Error)) =
+  {[@stop_split] [@expl:debug_struct_field1_finish 'self_' type invariant] [%#sfmt'1] inv_refmut_Formatter self_}
+  any [ return (result: t_Result_unit_Error) -> (! return {result}) ]
+
+let rec elim_CacheCleanupVisible (_x: t_ModelStep) (return (id: UInt64.t)) = any
+  [ _k (id: UInt64.t) -> {CacheCleanupVisible id = _x} (! return {id})
+  | _chk -> (! {[@expl:elim CacheCleanupVisible] match _x with
+      | CacheCleanupVisible _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec elim_CacheDropRecord (_x: t_ModelStep) (return (id: UInt64.t)) = any
+  [ _k (id: UInt64.t) -> {CacheDropRecord id = _x} (! return {id})
+  | _chk -> (! {[@expl:elim CacheDropRecord] match _x with
+      | CacheDropRecord _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec elim_CacheInsert (_x: t_ModelStep) (return (key: UInt64.t)) = any
+  [ _k (key: UInt64.t) -> {CacheInsert key = _x} (! return {key})
+  | _chk -> (! {[@expl:elim CacheInsert] match _x with
+      | CacheInsert _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec elim_FlusherDrop (_x: t_ModelStep) (return (id: UInt64.t)) = any
+  [ _k (id: UInt64.t) -> {FlusherDrop id = _x} (! return {id})
+  | _chk -> (! {[@expl:elim FlusherDrop] match _x with
+      | FlusherDrop _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec elim_WriterWrite (_x: t_ModelStep) (return (key: UInt64.t) (value: UInt64.t)) = any
+  [ _k (key: UInt64.t) (value: UInt64.t) -> {WriterWrite key value = _x} (! return {key} {value})
+  | _chk -> (! {[@expl:elim WriterWrite] match _x with
+      | WriterWrite _ _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+function dyn_Debug_of_usize (x: UInt64.t) : dyn_Debug
+
+let rec debug_struct_field2_finish (self_: MutBorrow.t t_Formatter) (name: string) (name1: string) (value1: dyn_Debug)
+  (name2: string) (value2: dyn_Debug) (return (x: t_Result_unit_Error)) =
+  {[@stop_split] [@expl:debug_struct_field2_finish 'self_' type invariant] [%#sfmt'3] inv_refmut_Formatter self_}
+  any [ return (result: t_Result_unit_Error) -> (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec fmt_ModelStep [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 178 16 178 21] (self: t_ModelStep)
+  (f: MutBorrow.t t_Formatter) (return (x: t_Result_unit_Error)) =
+  {[@stop_split] [@expl:fmt 'f' type invariant] [%#smodel] inv_refmut_Formatter f}
+  (! bb0
+  [ bb0 = any
+    [ br0 (x0: UInt64.t) (x1: UInt64.t) -> {self = WriterWrite x0 x1} (! bb16)
+    | br1 -> {self = FlusherFlushNext} (! bb15)
+    | br2 (x0: UInt64.t) -> {self = FlusherDrop x0} (! bb14)
+    | br3 (x0: UInt64.t) -> {self = CacheInsert x0} (! bb13)
+    | br4 (x0: UInt64.t) -> {self = CacheDropRecord x0} (! bb12)
+    | br5 (x0: UInt64.t) -> {self = CacheCleanupVisible x0} (! bb11)
+    | br6 (x0: UInt64.t) -> {self = ReaderStep x0} (! bb10)
+    | br7 -> {self = Crash} (! bb9) ]
+  | bb9 = s0
+    [ s0 = [ &_68 <- [%#smodel] "Crash" ] s1
+    | s1 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_66 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s2)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s2 = write_str [%#smodel] {_66} {_68} (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s3)
+    | s3 = s4 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s4 = -{resolve_refmut_Formatter f}- s5
+    | s5 = return {_ret} ]
+  | bb10 = s0
+    [ s0 = elim_ReaderStep {self} (fun (rkey: UInt64.t) -> [ &__self_0'4 <- rkey ] s1)
+    | s1 = [ &_60 <- [%#smodel] "ReaderStep" ] s2
+    | s2 = [ &_62 <- [%#smodel'0] "key" ] s3
+    | s3 = [ &_65 <- __self_0'4 ] s4
+    | s4 = [ &_63 <- dyn_Debug_of_ref_usize _65 ] s5
+    | s5 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_58 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s6)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s6 = debug_struct_field1_finish [%#smodel] {_58} {_60} {_62} {_63}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s7)
+    | s7 = s8 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s8 = -{resolve_refmut_Formatter f}- s9
+    | s9 = return {_ret} ]
+  | bb11 = s0
+    [ s0 = elim_CacheCleanupVisible {self} (fun (rid: UInt64.t) -> [ &__self_0'3 <- rid ] s1)
+    | s1 = [ &_51 <- [%#smodel] "CacheCleanupVisible" ] s2
+    | s2 = [ &_53 <- [%#smodel'1] "id" ] s3
+    | s3 = [ &_56 <- __self_0'3 ] s4
+    | s4 = [ &_54 <- dyn_Debug_of_ref_usize _56 ] s5
+    | s5 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_49 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s6)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s6 = debug_struct_field1_finish [%#smodel] {_49} {_51} {_53} {_54}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s7)
+    | s7 = s8 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s8 = -{resolve_refmut_Formatter f}- s9
+    | s9 = return {_ret} ]
+  | bb12 = s0
+    [ s0 = elim_CacheDropRecord {self} (fun (rid: UInt64.t) -> [ &__self_0'2 <- rid ] s1)
+    | s1 = [ &_42 <- [%#smodel] "CacheDropRecord" ] s2
+    | s2 = [ &_44 <- [%#smodel'2] "id" ] s3
+    | s3 = [ &_47 <- __self_0'2 ] s4
+    | s4 = [ &_45 <- dyn_Debug_of_ref_usize _47 ] s5
+    | s5 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_40 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s6)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s6 = debug_struct_field1_finish [%#smodel] {_40} {_42} {_44} {_45}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s7)
+    | s7 = s8 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s8 = -{resolve_refmut_Formatter f}- s9
+    | s9 = return {_ret} ]
+  | bb13 = s0
+    [ s0 = elim_CacheInsert {self} (fun (rkey: UInt64.t) -> [ &__self_0'1 <- rkey ] s1)
+    | s1 = [ &_33 <- [%#smodel] "CacheInsert" ] s2
+    | s2 = [ &_35 <- [%#smodel'3] "key" ] s3
+    | s3 = [ &_38 <- __self_0'1 ] s4
+    | s4 = [ &_36 <- dyn_Debug_of_ref_usize _38 ] s5
+    | s5 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_31 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s6)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s6 = debug_struct_field1_finish [%#smodel] {_31} {_33} {_35} {_36}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s7)
+    | s7 = s8 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s8 = -{resolve_refmut_Formatter f}- s9
+    | s9 = return {_ret} ]
+  | bb14 = s0
+    [ s0 = elim_FlusherDrop {self} (fun (rid: UInt64.t) -> [ &__self_0'0 <- rid ] s1)
+    | s1 = [ &_24 <- [%#smodel] "FlusherDrop" ] s2
+    | s2 = [ &_26 <- [%#smodel'4] "id" ] s3
+    | s3 = [ &_29 <- __self_0'0 ] s4
+    | s4 = [ &_27 <- dyn_Debug_of_ref_usize _29 ] s5
+    | s5 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_22 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s6)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s6 = debug_struct_field1_finish [%#smodel] {_22} {_24} {_26} {_27}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s7)
+    | s7 = s8 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s8 = -{resolve_refmut_Formatter f}- s9
+    | s9 = return {_ret} ]
+  | bb15 = s0
+    [ s0 = [ &_20 <- [%#smodel] "FlusherFlushNext" ] s1
+    | s1 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_18 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s2)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s2 = write_str [%#smodel] {_18} {_20} (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s3)
+    | s3 = s4 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s4 = -{resolve_refmut_Formatter f}- s5
+    | s5 = return {_ret} ]
+  | bb16 = s0
+    [ s0 = elim_WriterWrite {self} (fun (rkey: UInt64.t) (rvalue: UInt64.t) -> [ &__self_0 <- rkey ] s1)
+    | s1 = elim_WriterWrite {self} (fun (rkey: UInt64.t) (rvalue: UInt64.t) -> [ &__self_1 <- rvalue ] s2)
+    | s2 = [ &_8 <- [%#smodel] "WriterWrite" ] s3
+    | s3 = [ &_10 <- [%#smodel'5] "key" ] s4
+    | s4 = [ &_11 <- dyn_Debug_of_usize __self_0 ] s5
+    | s5 = [ &_14 <- [%#smodel'6] "value" ] s6
+    | s6 = [ &_17 <- __self_1 ] s7
+    | s7 = [ &_15 <- dyn_Debug_of_ref_usize _17 ] s8
+    | s8 = MutBorrow.borrow_final <t_Formatter> {f.current} {MutBorrow.get_id f}
+        (fun (_bor: MutBorrow.t t_Formatter) ->
+          [ &_6 <- _bor ] -{inv_Formatter _bor.final}-
+          [ &f <- { f with current = _bor.final } ] s9)
+      [ _ck -> (! {[@expl:type invariant] inv_Formatter f.current} any) ]
+    | s9 = debug_struct_field2_finish [%#smodel] {_6} {_8} {_10} {_11} {_14} {_15}
+        (fun (_x: t_Result_unit_Error) -> [ &_ret <- _x ] s10)
+    | s10 = s11 [ _ck -> (! {[@expl:type invariant] inv_refmut_Formatter f} any) ]
+    | s11 = -{resolve_refmut_Formatter f}- s12
+    | s12 = return {_ret} ] ]
+  [ & _ret: t_Result_unit_Error = Any.any_l ()
+  | & self: t_ModelStep = self
+  | & f: MutBorrow.t t_Formatter = f
+  | & __self_0: UInt64.t = Any.any_l ()
+  | & __self_1: UInt64.t = Any.any_l ()
+  | & _6: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _8: string = Any.any_l ()
+  | & _10: string = Any.any_l ()
+  | & _11: dyn_Debug = Any.any_l ()
+  | & _14: string = Any.any_l ()
+  | & _15: dyn_Debug = Any.any_l ()
+  | & _17: UInt64.t = Any.any_l ()
+  | & _18: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _20: string = Any.any_l ()
+  | & __self_0'0: UInt64.t = Any.any_l ()
+  | & _22: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _24: string = Any.any_l ()
+  | & _26: string = Any.any_l ()
+  | & _27: dyn_Debug = Any.any_l ()
+  | & _29: UInt64.t = Any.any_l ()
+  | & __self_0'1: UInt64.t = Any.any_l ()
+  | & _31: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _33: string = Any.any_l ()
+  | & _35: string = Any.any_l ()
+  | & _36: dyn_Debug = Any.any_l ()
+  | & _38: UInt64.t = Any.any_l ()
+  | & __self_0'2: UInt64.t = Any.any_l ()
+  | & _40: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _42: string = Any.any_l ()
+  | & _44: string = Any.any_l ()
+  | & _45: dyn_Debug = Any.any_l ()
+  | & _47: UInt64.t = Any.any_l ()
+  | & __self_0'3: UInt64.t = Any.any_l ()
+  | & _49: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _51: string = Any.any_l ()
+  | & _53: string = Any.any_l ()
+  | & _54: dyn_Debug = Any.any_l ()
+  | & _56: UInt64.t = Any.any_l ()
+  | & __self_0'4: UInt64.t = Any.any_l ()
+  | & _58: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _60: string = Any.any_l ()
+  | & _62: string = Any.any_l ()
+  | & _63: dyn_Debug = Any.any_l ()
+  | & _65: UInt64.t = Any.any_l ()
+  | & _66: MutBorrow.t t_Formatter = Any.any_l ()
+  | & _68: string = Any.any_l () ]) [ return (result: t_Result_unit_Error) -> (! return {result}) ]

@@ -1,0 +1,61 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 666 4 666 85 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 667 11 667 33
+
+use creusot.int.UInt64
+use creusot.prelude.Any
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+let rec valid_cache (self: t_ModelConfig) (id: UInt64.t) (return (x: bool)) = any
+  [ return (result: bool) -> (! return {result}) ]
+
+type t_ModelError = InvalidKey UInt64.t | InvalidValue UInt64.t | InvalidWriteId UInt64.t | InvalidCacheId UInt64.t
+
+type t_Result_unit_ModelError = Ok () | Err t_ModelError
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec check_cache [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 666 4 666 85] (self: t_ModelState)
+  (config: t_ModelConfig) (id: UInt64.t) (return (x: t_Result_unit_ModelError)) = (! bb0
+  [ bb0 = s0
+    [ s0 = valid_cache [%#smodel] {config} {id} (fun (_x: bool) -> [ &_4 <- _x ] s1)
+    | s1 = any [ br0 -> {_4 = false} (! bb3) | br1 -> {_4} (! bb2) ] ]
+  | bb2 = s0 [ s0 = [ &_ret <- Ok _7 ] s1 | s1 = return {_ret} ]
+  | bb3 = s0 [ s0 = [ &_8 <- InvalidCacheId id ] s1 | s1 = [ &_ret <- Err _8 ] s2 | s2 = return {_ret} ] ]
+  [ & _ret: t_Result_unit_ModelError = Any.any_l ()
+  | & config: t_ModelConfig = config
+  | & id: UInt64.t = id
+  | & _4: bool = Any.any_l ()
+  | & _7: () = Any.any_l ()
+  | & _8: t_ModelError = Any.any_l () ]) [ return (result: t_Result_unit_ModelError) -> (! return {result}) ]

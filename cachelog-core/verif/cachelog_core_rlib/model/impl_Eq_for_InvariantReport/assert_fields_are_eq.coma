@@ -1,0 +1,17 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 193 32 193 34 *)
+
+(* <model::InvariantReport as std::cmp::Eq> *)
+
+use creusot.prelude.Any
+
+type t_Vec_ref_str_Global
+
+type t_InvariantReport = { failures: t_Vec_ref_str_Global }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec assert_fields_are_eq_InvariantReport [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 193 32 193 34]
+  (self: t_InvariantReport) (return (x: ())) = (! bb0
+  [ bb0 = return {_ret} ] [ & _ret: () = Any.any_l () ]) [ return (result: ()) -> (! return {result}) ]

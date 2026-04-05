@@ -1,0 +1,167 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 613 4 613 70 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 614 46 614 59
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 614 61 614 77
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 614 24 614 78
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 614 8 614 78
+let%span smodel'3 = "/tmp/creusot-install-check/creusot-std/src/model.rs" 36 8 36 28
+let%span smodel'4 = "/tmp/creusot-install-check/creusot-std/src/model.rs" 53 8 53 12
+let%span soption = "/tmp/creusot-install-check/creusot-std/src/std/option.rs" 13 8 16 9
+let%span snum = "/tmp/creusot-install-check/creusot-std/src/std/num.rs" 25 28 25 33
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 202 18 202 34
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 30 14 30 47
+let%span svec'2 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 31 14 32 51
+let%span svec'3 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span scmp = "/tmp/creusot-install-check/creusot-std/src/std/cmp.rs" 14 26 14 75
+let%span slib = "/tmp/creusot-install-check/creusot-std-proc/src/lib.rs" 90 0 90 44
+
+use creusot.int.UInt64
+use creusot.slice.Slice64
+use seq.Seq
+use creusot.prelude.Any
+use int.Int
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec'0] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec deref_Vec_usize_Global (self_: t_Vec_usize_Global) (return (x: Slice64.slice UInt64.t)) = any
+  [ return (result: Slice64.slice UInt64.t) -> {[@stop_split] [@expl:deref ensures] [%#svec] Slice64.view result
+    = view_Vec_usize_Global self_}
+    (! return {result}) ]
+
+type t_Option_usize = None | Some UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec'0] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+let rec deref_Vec_DirtyRecord_Global (self_: t_Vec_DirtyRecord_Global) (return (x: Slice64.slice t_DirtyRecord)) = any
+  [ return (result: Slice64.slice t_DirtyRecord) -> {[@stop_split] [@expl:deref ensures] [%#svec] Slice64.view result
+    = view_Vec_DirtyRecord_Global self_}
+    (! return {result}) ]
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+let rec apply_flushed (config: t_ModelConfig) (flushed'0: Slice64.slice UInt64.t)
+  (write_hist'0: Slice64.slice t_DirtyRecord) (return (x: t_Vec_DurableValue_Global)) = any
+  [ return (result: t_Vec_DurableValue_Global) -> (! return {result}) ]
+
+type t_Option_Int = None'0 | Some'0 int
+
+type t_DurableValueDeepModel = { present'0: bool; value'0: int; seq'0: t_Option_Int }
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'0] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate deep_model_bool [@inline:trivial] (self: bool) = [%#smodel'4] self
+
+meta "rewrite_def" predicate deep_model_bool
+
+function deep_model_usize [@inline:trivial] (self: UInt64.t) : int = [%#snum] UInt64.t'int self
+
+meta "rewrite_def" function deep_model_usize
+
+function deep_model_Option_usize [@inline:trivial] (self: t_Option_usize) : t_Option_Int = [%#soption] match self with
+    | Some t -> Some'0 (deep_model_usize t)
+    | None -> None'0
+    end
+
+meta "rewrite_def" function deep_model_Option_usize
+
+function deep_model_DurableValue [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 50 27 50 36] (self: t_DurableValue) : t_DurableValueDeepModel
+ = [%#slib] { present'0 = deep_model_bool self.present'1;
+              value'0 = deep_model_usize self.value'1;
+              seq'0 = deep_model_Option_usize self.seq'1 }
+
+function index_Vec_DurableValue_Global [@inline:trivial] (self: t_Vec_DurableValue_Global) (ix: int) : t_DurableValue =
+  [%#svec'3] Seq.get (view_Vec_DurableValue_Global self) ix
+
+meta "rewrite_def" function index_Vec_DurableValue_Global
+
+function deep_model_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValueDeepModel
+
+axiom deep_model_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'1] Seq.length (view_Vec_DurableValue_Global self)
+    = Seq.length (deep_model_Vec_DurableValue_Global self)
+
+axiom deep_model_Vec_DurableValue_Global_spec'0: forall self: t_Vec_DurableValue_Global. [%#svec'2] forall i: int. 0
+          <= i
+        /\ i < Seq.length (view_Vec_DurableValue_Global self)
+      -> Seq.get (deep_model_Vec_DurableValue_Global self) i
+      = deep_model_DurableValue (index_Vec_DurableValue_Global self i)
+
+function deep_model_ref_Vec_DurableValue_Global [@inline:trivial] (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValueDeepModel
+ = [%#smodel'3] deep_model_Vec_DurableValue_Global self
+
+meta "rewrite_def" function deep_model_ref_Vec_DurableValue_Global
+
+let rec eq_Vec_DurableValue_Global (self_: t_Vec_DurableValue_Global) (rhs: t_Vec_DurableValue_Global)
+  (return (x: bool)) = any
+  [ return (result: bool) -> {[@stop_split] [@expl:eq ensures] [%#scmp] result
+    = (deep_model_ref_Vec_DurableValue_Global self_ = deep_model_ref_Vec_DurableValue_Global rhs)}
+    (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec durable_matches_flushed [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 613 4 613 70]
+  (self: t_ModelState) (config: t_ModelConfig) (return (x: bool)) = (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_10 <- self.flushed ] s1
+    | s1 = deref_Vec_usize_Global [%#smodel] {_10} (fun (_x: Slice64.slice UInt64.t) -> [ &_8 <- _x ] s2)
+    | s2 = [ &_14 <- self.write_hist ] s3
+    | s3 = deref_Vec_DirtyRecord_Global [%#smodel'0] {_14} (fun (_x: Slice64.slice t_DirtyRecord) -> [ &_12 <- _x ] s4)
+    | s4 = apply_flushed [%#smodel'1] {config} {_8} {_12} (fun (_x: t_Vec_DurableValue_Global) -> [ &_5 <- _x ] s5)
+    | s5 = eq_Vec_DurableValue_Global [%#smodel'2] {self.durable} {_5} (fun (_x: bool) -> [ &_ret <- _x ] s6)
+    | s6 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l ()
+  | & self: t_ModelState = self
+  | & config: t_ModelConfig = config
+  | & _5: t_Vec_DurableValue_Global = Any.any_l ()
+  | & _8: Slice64.slice UInt64.t = Any.any_l ()
+  | & _10: t_Vec_usize_Global = Any.any_l ()
+  | & _12: Slice64.slice t_DirtyRecord = Any.any_l ()
+  | & _14: t_Vec_DirtyRecord_Global = Any.any_l () ]) [ return (result: bool) -> (! return {result}) ]

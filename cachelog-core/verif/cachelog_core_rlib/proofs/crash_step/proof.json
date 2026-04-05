@@ -1,0 +1,12 @@
+{
+  "profile": [],
+  "proofs": {
+    "Coma": {
+      "vc_crash": { "prover": "alt-ergo", "time": 0.039 },
+      "vc_crash_step": {
+        "tactic": "compute_specified",
+        "children": [ { "prover": "alt-ergo", "time": 0.035 } ]
+      }
+    }
+  }
+}

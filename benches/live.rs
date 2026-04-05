@@ -48,13 +48,16 @@ fn bench_stale_cycle(c: &mut Criterion) {
     let stale = CacheLogMap::<u64, u64>::new(CacheLogConfig::new(1024, 1024, 1024));
     let _ = stale.insert_clean_if_absent(1, 1);
 
-    group.bench_function(BenchmarkId::new("stale_cycle", "read_cleanup_reinsert"), |b| {
-        b.iter(|| {
-            black_box(stale.evict_clean(&1));
-            black_box(stale.read(&1, |_, value, _, _| *value));
-            black_box(stale.insert_clean_if_absent(1, 1));
-        });
-    });
+    group.bench_function(
+        BenchmarkId::new("stale_cycle", "read_cleanup_reinsert"),
+        |b| {
+            b.iter(|| {
+                black_box(stale.evict_clean(&1));
+                black_box(stale.read(&1, |_, value, _, _| *value));
+                black_box(stale.insert_clean_if_absent(1, 1));
+            });
+        },
+    );
 
     group.finish();
 }

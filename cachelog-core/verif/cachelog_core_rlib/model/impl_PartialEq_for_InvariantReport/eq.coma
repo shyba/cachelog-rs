@@ -1,0 +1,71 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 193 36 193 45 *)
+
+(* <model::InvariantReport as std::cmp::PartialEq> *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 195 4 195 35
+let%span smodel'0 = "/tmp/creusot-install-check/creusot-std/src/model.rs" 36 8 36 28
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 30 14 30 47
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 31 14 32 51
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'2 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span scmp = "/tmp/creusot-install-check/creusot-std/src/std/cmp.rs" 14 26 14 75
+
+use creusot.prelude.Char
+use seq.Seq
+use creusot.int.UInt64
+use creusot.prelude.Any
+use int.Int
+
+type t_Vec_ref_str_Global
+
+type t_InvariantReport = { failures: t_Vec_ref_str_Global }
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_ref_str_Global (self: t_Vec_ref_str_Global) : Seq.seq string
+
+axiom view_Vec_ref_str_Global_spec:
+  forall self: t_Vec_ref_str_Global. [%#svec'1] Seq.length (view_Vec_ref_str_Global self) <= UInt64.t'int const_MAX
+
+function deep_model_str (self: string) : Seq.seq Char.t
+
+function deep_model_ref_str [@inline:trivial] (self: string) : Seq.seq Char.t = [%#smodel'0] deep_model_str self
+
+meta "rewrite_def" function deep_model_ref_str
+
+function index_Vec_ref_str_Global [@inline:trivial] (self: t_Vec_ref_str_Global) (ix: int) : string =
+  [%#svec'2] Seq.get (view_Vec_ref_str_Global self) ix
+
+meta "rewrite_def" function index_Vec_ref_str_Global
+
+function deep_model_Vec_ref_str_Global (self: t_Vec_ref_str_Global) : Seq.seq (Seq.seq Char.t)
+
+axiom deep_model_Vec_ref_str_Global_spec:
+  forall self: t_Vec_ref_str_Global. [%#svec] Seq.length (view_Vec_ref_str_Global self)
+    = Seq.length (deep_model_Vec_ref_str_Global self)
+
+axiom deep_model_Vec_ref_str_Global_spec'0: forall self: t_Vec_ref_str_Global. [%#svec'0] forall i: int. 0 <= i
+        /\ i < Seq.length (view_Vec_ref_str_Global self)
+      -> Seq.get (deep_model_Vec_ref_str_Global self) i = deep_model_ref_str (index_Vec_ref_str_Global self i)
+
+function deep_model_ref_Vec_ref_str_Global [@inline:trivial] (self: t_Vec_ref_str_Global) : Seq.seq (Seq.seq Char.t) =
+  [%#smodel'0] deep_model_Vec_ref_str_Global self
+
+meta "rewrite_def" function deep_model_ref_Vec_ref_str_Global
+
+let rec eq_Vec_ref_str_Global (self_: t_Vec_ref_str_Global) (rhs: t_Vec_ref_str_Global) (return (x: bool)) = any
+  [ return (result: bool) -> {[@stop_split] [@expl:eq ensures] [%#scmp] result
+    = (deep_model_ref_Vec_ref_str_Global self_ = deep_model_ref_Vec_ref_str_Global rhs)}
+    (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec eq_InvariantReport [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 193 36 193 45]
+  (self: t_InvariantReport) (other: t_InvariantReport) (return (x: bool)) = (! bb0
+  [ bb0 = s0
+    [ s0 = eq_Vec_ref_str_Global [%#smodel] {self.failures} {other.failures} (fun (_x: bool) -> [ &_ret <- _x ] s1)
+    | s1 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l () | & self: t_InvariantReport = self | & other: t_InvariantReport = other ])
+  [ return (result: bool) -> (! return {result}) ]

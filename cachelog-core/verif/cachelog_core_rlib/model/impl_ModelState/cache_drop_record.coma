@@ -1,0 +1,519 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 403 4 407 31 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 408 8 408 36
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 408 8 408 37
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 412 27 412 31
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 413 35 413 56
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 413 28 413 32
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 399 45 399 80
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 400 45 400 83
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 401 45 401 66
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 402 44 402 82
+let%span sops = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 658 18 661 9
+let%span sops'0 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 675 25 675 33
+let%span sops'1 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 671 18 674 9
+let%span sops'2 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 160 14 160 114
+let%span sops'3 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 165 14 165 100
+let%span sops'4 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 170 14 170 61
+let%span sops'5 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 126 15 126 59
+let%span sops'6 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 127 14 127 38
+let%span sops'7 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 132 14 132 33
+let%span sops'8 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 137 15 137 31
+let%span sops'9 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 138 15 138 28
+let%span sops'10 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 139 14 139 30
+let%span sops'11 = "/tmp/creusot-install-check/creusot-std/src/std/ops.rs" 144 14 145 104
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 195 19 195 38
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 196 18 196 46
+let%span svec'1 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 185 19 185 38
+let%span svec'2 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 186 18 186 46
+let%span svec'3 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 187 18 187 49
+let%span svec'4 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 188 18 188 54
+let%span svec'5 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 189 18 189 47
+let%span svec'6 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'7 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span sproofs = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 14 8 17 30
+let%span sproofs'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 86 8 107 44
+let%span sproofs'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 24 8 28 9
+let%span sproofs'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 35 8 46 9
+let%span sproofs'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 53 8 64 9
+let%span sproofs'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 71 8 79 9
+let%span sord = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 162 41 162 102
+let%span sord'0 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 168 41 168 99
+let%span sord'1 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 174 41 174 99
+let%span sord'2 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 180 41 180 102
+let%span sord'3 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 186 41 186 83
+let%span sord'4 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 192 42 192 59
+let%span sord'5 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 193 42 193 59
+let%span sord'6 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 194 41 194 58
+let%span sord'7 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 200 42 200 83
+let%span sord'8 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 201 41 201 85
+let%span sord'9 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 207 42 207 86
+let%span sord'10 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 208 41 208 82
+let%span sord'11 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 214 41 214 97
+let%span sord'12 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 296 16 302 17
+let%span sconvert = "/tmp/creusot-install-check/creusot-std/src/std/convert.rs" 19 18 19 32
+let%span sslice = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 148 20 148 37
+let%span sslice'0 = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 153 20 153 37
+let%span sslice'1 = "/tmp/creusot-install-check/creusot-std/src/std/slice.rs" 158 20 158 88
+
+use creusot.int.UInt64
+use creusot.prelude.MutBorrow
+use seq.Seq
+use creusot.prelude.Any
+use int.Int
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+type t_ModelError = InvalidKey UInt64.t | InvalidValue UInt64.t | InvalidWriteId UInt64.t | InvalidCacheId UInt64.t
+
+type t_Result_unit_ModelError = Ok () | Err t_ModelError
+
+let rec check_cache (self: t_ModelState) (config: t_ModelConfig) (id: UInt64.t) (return (x: t_Result_unit_ModelError)) =
+  any [ return (result: t_Result_unit_ModelError) -> (! return {result}) ]
+
+type t_Result_Infallible_ModelError = Ok'0 () | Err'0 t_ModelError
+
+type t_ControlFlow_Result_Infallible_ModelError_unit = Continue () | Break t_Result_Infallible_ModelError
+
+predicate inv_Infallible [@inline:trivial] (_1: ()) = false
+
+meta "rewrite_def" predicate inv_Infallible
+
+predicate inv_Result_Infallible_ModelError (_1: t_Result_Infallible_ModelError)
+
+axiom inv_axiom [@rewrite]:
+  forall x: t_Result_Infallible_ModelError [inv_Result_Infallible_ModelError x]. inv_Result_Infallible_ModelError x
+    = match x with
+      | Ok'0 f0 -> inv_Infallible f0
+      | Err'0 f0 -> true
+      end
+
+predicate inv_ControlFlow_Result_Infallible_ModelError_unit (_1: t_ControlFlow_Result_Infallible_ModelError_unit)
+
+axiom inv_axiom'0 [@rewrite]:
+  forall x: t_ControlFlow_Result_Infallible_ModelError_unit [inv_ControlFlow_Result_Infallible_ModelError_unit x]. inv_ControlFlow_Result_Infallible_ModelError_unit x
+    = match x with
+      | Continue f0 -> true
+      | Break f0 -> inv_Result_Infallible_ModelError f0
+      end
+
+let rec branch_Result_unit_ModelError (self_: t_Result_unit_ModelError)
+  (return (x: t_ControlFlow_Result_Infallible_ModelError_unit)) = any
+  [ return (result: t_ControlFlow_Result_Infallible_ModelError_unit) ->
+  {[@stop_split] [@expl:branch_Result_unit_ModelError ensures] ([@stop_split] [@expl:branch result type invariant] inv_ControlFlow_Result_Infallible_ModelError_unit result)
+    /\ ([@stop_split] [@expl:branch ensures] [%#sops] match self_ with
+      | Ok v -> result = Continue v
+      | Err e -> result = Break (Err'0 e)
+      end)}
+    (! return {result}) ]
+
+predicate resolve_refmut_ModelState [@inline:trivial] (_1: MutBorrow.t t_ModelState) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_ModelState
+
+let rec elim_Break (_x: t_ControlFlow_Result_Infallible_ModelError_unit) (return (f0: t_Result_Infallible_ModelError)) =
+  any
+  [ _k (f0: t_Result_Infallible_ModelError) -> {Break f0 = _x} (! return {f0})
+  | _chk -> (! {[@expl:elim Break] match _x with
+      | Break _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+type tup2_Result_unit_ModelError_Result_Infallible_ModelError = {
+  f0: t_Result_unit_ModelError;
+  f1: t_Result_Infallible_ModelError }
+
+predicate postcondition_once_from [@inline:trivial] (self: ()) (args: t_ModelError) (result: t_ModelError) =
+  let self_ = args in [%#sconvert] result = self_
+
+meta "rewrite_def" predicate postcondition_once_from
+
+predicate resolve_from [@inline:trivial] (_1: ()) = true
+
+meta "rewrite_def" predicate resolve_from
+
+predicate postcondition_mut_from [@inline:trivial] (self: ()) (args: t_ModelError) (result_state: ()) (result: t_ModelError) =
+  let self_ = args in [%#sconvert] result = self_
+
+meta "rewrite_def" predicate postcondition_mut_from
+
+function fn_mut_once_from (self: ()) (args: t_ModelError) (res: t_ModelError) : ()
+
+axiom fn_mut_once_from_spec:
+  forall self: (), args: t_ModelError, res: t_ModelError. [%#sops'11] postcondition_once_from self args res
+    = (exists res_state: (). postcondition_mut_from self args res_state res /\ resolve_from res_state)
+
+predicate hist_inv_from [@inline:trivial] (self: ()) (result_state: ()) = true
+
+meta "rewrite_def" predicate hist_inv_from
+
+function hist_inv_trans_from (self: ()) (b: ()) (c: ()) : ()
+
+axiom hist_inv_trans_from_spec: forall self: (), b: (), c: (). ([%#sops'8] hist_inv_from self b)
+    -> ([%#sops'9] hist_inv_from b c) -> ([%#sops'10] hist_inv_from self c)
+
+function hist_inv_refl_from (self: ()) : ()
+
+axiom hist_inv_refl_from_spec: forall self: (). [%#sops'7] hist_inv_from self self
+
+function postcondition_mut_hist_inv_from (self: ()) (args: t_ModelError) (res_state: ()) (res: t_ModelError) : ()
+
+axiom postcondition_mut_hist_inv_from_spec:
+  forall self: (), args: t_ModelError, res_state: (), res: t_ModelError. ([%#sops'5] postcondition_mut_from self args res_state res)
+    -> ([%#sops'6] hist_inv_from self res_state)
+
+function fn_hist_inv_from (self: ()) (res_state: ()) : ()
+
+axiom fn_hist_inv_from_spec: forall self: (), res_state: (). [%#sops'4] hist_inv_from self res_state
+    = (self = res_state)
+
+predicate postcondition_from [@inline:trivial] (self: ()) (args: t_ModelError) (result: t_ModelError) =
+  let self_ = args in [%#sconvert] result = self_
+
+meta "rewrite_def" predicate postcondition_from
+
+function fn_once_from (self: ()) (args: t_ModelError) (res: t_ModelError) : ()
+
+axiom fn_once_from_spec:
+  forall self: (), args: t_ModelError, res: t_ModelError. [%#sops'3] postcondition_once_from self args res
+    = (postcondition_from self args res /\ resolve_from self)
+
+function fn_mut_from (self: ()) (args: t_ModelError) (res_state: ()) (res: t_ModelError) : ()
+
+axiom fn_mut_from_spec:
+  forall self: (), args: t_ModelError, res_state: (), res: t_ModelError. [%#sops'2] postcondition_mut_from self args res_state res
+    = (postcondition_from self args res /\ self = res_state)
+
+let rec from_ModelError (self_: t_ModelError) (return (x: t_ModelError)) = any
+  [ return (result: t_ModelError) -> {[@stop_split] [@expl:from ensures] [%#sconvert] result = self_}
+    (! return {result}) ]
+
+let rec from_residual_Result_unit_ModelError (residual: t_Result_Infallible_ModelError)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:from_residual 'residual' type invariant] [%#sops'0] inv_Result_Infallible_ModelError residual}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:from_residual ensures] [%#sops'1] match { f0 = result; f1 = residual } with
+      | {f0 = Err result'0; f1 = Err'0 residual'0} -> postcondition_from () residual'0 result'0
+      | _ -> false
+      end}
+    (! return {result}) ]
+
+type t_Option_usize = None | Some UInt64.t
+
+type t_CleanRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+predicate in_bounds_usize [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_CleanRecord) =
+  [%#sslice] UInt64.t'int self < Seq.length seq
+
+meta "rewrite_def" predicate in_bounds_usize
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_CleanRecord_Global (self: t_Vec_CleanRecord_Global) : Seq.seq t_CleanRecord
+
+axiom view_Vec_CleanRecord_Global_spec:
+  forall self: t_Vec_CleanRecord_Global. [%#svec'6] Seq.length (view_Vec_CleanRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate has_value_usize [@inline:trivial] (self: UInt64.t) (seq: Seq.seq t_CleanRecord) (out: t_CleanRecord) =
+  [%#sslice'0] Seq.get seq (UInt64.t'int self) = out
+
+meta "rewrite_def" predicate has_value_usize
+
+let rec index_Vec_CleanRecord_Global (self_: t_Vec_CleanRecord_Global) (ix: UInt64.t) (return (x: t_CleanRecord)) =
+  {[@stop_split] [@expl:index requires] [%#svec] in_bounds_usize ix (view_Vec_CleanRecord_Global self_)}
+  any
+  [ return (result: t_CleanRecord) ->
+  {[@stop_split] [@expl:index ensures] [%#svec'0] has_value_usize ix (view_Vec_CleanRecord_Global self_) result}
+    (! return {result}) ]
+
+let rec absent (return (x: t_CleanRecord)) = any [ return (result: t_CleanRecord) -> (! return {result}) ]
+
+predicate resolve_elswhere_usize [@inline:trivial] (self: UInt64.t) (old': Seq.seq t_CleanRecord) (fin: Seq.seq t_CleanRecord) =
+  [%#sslice'1] forall i: int. 0 <= i /\ i <> UInt64.t'int self /\ i < Seq.length old' -> Seq.get old' i = Seq.get fin i
+
+meta "rewrite_def" predicate resolve_elswhere_usize
+
+let rec index_mut_Vec_CleanRecord_Global (self_: MutBorrow.t t_Vec_CleanRecord_Global) (ix: UInt64.t)
+  (return (x: MutBorrow.t t_CleanRecord)) =
+  {[@stop_split] [@expl:index_mut requires] [%#svec'1] in_bounds_usize ix (view_Vec_CleanRecord_Global self_.current)}
+  any
+  [ return (result: MutBorrow.t t_CleanRecord) ->
+  {[@stop_split] [@expl:index_mut_Vec_CleanRecord_Global ensures] ([@stop_split] [@expl:index_mut ensures #0] [%#svec'2] has_value_usize ix (view_Vec_CleanRecord_Global self_.current) result.current)
+    /\ ([@stop_split] [@expl:index_mut ensures #1] [%#svec'3] has_value_usize ix (view_Vec_CleanRecord_Global self_.final) result.final)
+    /\ ([@stop_split] [@expl:index_mut ensures #2] [%#svec'4] resolve_elswhere_usize ix (view_Vec_CleanRecord_Global self_.current) (view_Vec_CleanRecord_Global self_.final))
+    /\ ([@stop_split] [@expl:index_mut ensures #3] [%#svec'5] Seq.length (view_Vec_CleanRecord_Global self_.final)
+    = Seq.length (view_Vec_CleanRecord_Global self_.current))}
+    (! return {result}) ]
+
+predicate resolve_refmut_CleanRecord [@inline:trivial] (_1: MutBorrow.t t_CleanRecord) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_CleanRecord
+
+type t_Ordering = Less | Equal | Greater
+
+function cmp_log_usize (self: UInt64.t) (o: UInt64.t) : t_Ordering = [%#sord'12] if UInt64.lt self o then
+    Less
+  else
+    if self = o then Equal else Greater
+
+
+function eq_cmp_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom eq_cmp_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'11] (x = y) = (cmp_log_usize x y = Equal)
+
+function antisym2_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym2_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'9] cmp_log_usize x y = Greater)
+    -> ([%#sord'10] cmp_log_usize y x = Less)
+
+function antisym1_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym1_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'7] cmp_log_usize x y = Less)
+    -> ([%#sord'8] cmp_log_usize y x = Greater)
+
+function trans_usize (x: UInt64.t) (y: UInt64.t) (z: UInt64.t) (o: t_Ordering) : ()
+
+axiom trans_usize_spec: forall x: UInt64.t, y: UInt64.t, z: UInt64.t, o: t_Ordering. ([%#sord'4] cmp_log_usize x y = o)
+    -> ([%#sord'5] cmp_log_usize y z = o) -> ([%#sord'6] cmp_log_usize x z = o)
+
+function refl_usize (x: UInt64.t) : ()
+
+axiom refl_usize_spec: forall x: UInt64.t. [%#sord'3] cmp_log_usize x x = Equal
+
+function cmp_gt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_gt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'2] UInt64.gt x y = (cmp_log_usize x y = Greater)
+
+function cmp_ge_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_ge_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'1] UInt64.ge x y = (cmp_log_usize x y <> Less)
+
+function cmp_lt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_lt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'0] UInt64.lt x y = (cmp_log_usize x y = Less)
+
+function cmp_le_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_le_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord] UInt64.le x y = (cmp_log_usize x y <> Greater)
+
+predicate valid_config [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 12 0 12 45] (cfg: t_ModelConfig) =
+  [%#sproofs] UInt64.gt cfg.key_count (0: UInt64.t)
+  /\ UInt64.gt cfg.value_count (0: UInt64.t)
+  /\ UInt64.gt cfg.max_write (0: UInt64.t) /\ UInt64.gt cfg.max_cache (0: UInt64.t)
+
+type t_VisibleRef = None'0 | Dirty'0 UInt64.t | Clean'0 UInt64.t
+
+function view_Vec_VisibleRef_Global (self: t_Vec_VisibleRef_Global) : Seq.seq t_VisibleRef
+
+axiom view_Vec_VisibleRef_Global_spec:
+  forall self: t_Vec_VisibleRef_Global. [%#svec'6] Seq.length (view_Vec_VisibleRef_Global self)
+    <= UInt64.t'int const_MAX
+
+type t_DirtyRecord = { present'0: bool; id'0: t_Option_usize; key'0: UInt64.t; value'0: UInt64.t }
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec'6] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec'6] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+function view_Vec_bool_Global (self: t_Vec_bool_Global) : Seq.seq bool
+
+axiom view_Vec_bool_Global_spec: forall self: t_Vec_bool_Global. [%#svec'6] Seq.length (view_Vec_bool_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate visible_ref_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 22 0 22 68] (visible'0: t_VisibleRef) (cfg: t_ModelConfig) =
+  [%#sproofs'1] match visible'0 with
+    | None'0 -> true
+    | Dirty'0 id'1 -> UInt64.lt id'1 cfg.max_write
+    | Clean'0 id'1 -> UInt64.lt id'1 cfg.max_cache
+    end
+
+function index_Vec_VisibleRef_Global [@inline:trivial] (self: t_Vec_VisibleRef_Global) (ix: int) : t_VisibleRef =
+  [%#svec'7] Seq.get (view_Vec_VisibleRef_Global self) ix
+
+meta "rewrite_def" function index_Vec_VisibleRef_Global
+
+predicate dirty_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 33 0 33 69] (record: t_DirtyRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'2] if not record.present'0 then
+    true
+  else
+    record.id'0 <> None
+    /\ match record.id'0 with
+      | Some id'1 -> UInt64.lt id'1 cfg.max_write
+      /\ UInt64.lt record.key'0 cfg.key_count /\ UInt64.lt record.value'0 cfg.value_count
+      | None -> false
+      end
+
+
+function index_Vec_DirtyRecord_Global [@inline:trivial] (self: t_Vec_DirtyRecord_Global) (ix: int) : t_DirtyRecord =
+  [%#svec'7] Seq.get (view_Vec_DirtyRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_DirtyRecord_Global
+
+predicate clean_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 51 0 51 69] (record: t_CleanRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'3] if not record.present then
+    true
+  else
+    record.id <> None
+    /\ match record.id with
+      | Some id'1 -> UInt64.lt id'1 cfg.max_cache
+      /\ UInt64.lt record.key cfg.key_count /\ UInt64.lt record.value cfg.value_count
+      | None -> false
+      end
+
+
+function index_Vec_CleanRecord_Global'0 [@inline:trivial] (self: t_Vec_CleanRecord_Global) (ix: int) : t_CleanRecord =
+  [%#svec'7] Seq.get (view_Vec_CleanRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_CleanRecord_Global'0
+
+predicate durable_value_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 69 0 69 70] (value'2: t_DurableValue) (cfg: t_ModelConfig) =
+  [%#sproofs'4] if not value'2.present'1 then
+    true
+  else
+    value'2.seq'1 <> None
+    /\ match value'2.seq'1 with
+      | Some seq -> UInt64.lt seq cfg.max_write /\ UInt64.lt value'2.value'1 cfg.value_count
+      | None -> false
+      end
+
+
+function index_Vec_DurableValue_Global [@inline:trivial] (self: t_Vec_DurableValue_Global) (ix: int) : t_DurableValue =
+  [%#svec'7] Seq.get (view_Vec_DurableValue_Global self) ix
+
+meta "rewrite_def" function index_Vec_DurableValue_Global
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec'6] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+function index_Vec_usize_Global [@inline:trivial] (self: t_Vec_usize_Global) (ix: int) : UInt64.t =
+  [%#svec'7] Seq.get (view_Vec_usize_Global self) ix
+
+meta "rewrite_def" function index_Vec_usize_Global
+
+predicate shape_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 84 0 84 60] (state: t_ModelState) (cfg: t_ModelConfig) =
+  [%#sproofs'0] Seq.length (view_Vec_VisibleRef_Global state.visible) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_store) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_hist) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_CleanRecord_Global state.cache_store) = UInt64.t'int cfg.max_cache
+  /\ Seq.length (view_Vec_DurableValue_Global state.durable) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_bool_Global state.created_dirty) = UInt64.t'int cfg.max_write
+  /\ UInt64.le state.next_write cfg.max_write
+  /\ UInt64.le state.next_cache cfg.max_cache
+  /\ (forall i: int. 0 <= i /\ i < Seq.length (view_Vec_VisibleRef_Global state.visible)
+    -> visible_ref_ok (index_Vec_VisibleRef_Global state.visible i) cfg
+    /\ (forall i'0: int. 0 <= i'0 /\ i'0 < Seq.length (view_Vec_DirtyRecord_Global state.write_store)
+      -> dirty_record_ok (index_Vec_DirtyRecord_Global state.write_store i'0) cfg
+      /\ (forall i'1: int. 0 <= i'1 /\ i'1 < Seq.length (view_Vec_DirtyRecord_Global state.write_hist)
+        -> dirty_record_ok (index_Vec_DirtyRecord_Global state.write_hist i'1) cfg
+        /\ (forall i'2: int. 0 <= i'2 /\ i'2 < Seq.length (view_Vec_CleanRecord_Global state.cache_store)
+          -> clean_record_ok (index_Vec_CleanRecord_Global'0 state.cache_store i'2) cfg
+          /\ (forall i'3: int. 0 <= i'3 /\ i'3 < Seq.length (view_Vec_DurableValue_Global state.durable)
+            -> durable_value_ok (index_Vec_DurableValue_Global state.durable i'3) cfg
+            /\ (forall i'4: int. 0 <= i'4 /\ i'4 < Seq.length (view_Vec_usize_Global state.dirty_q)
+              -> UInt64.lt (index_Vec_usize_Global state.dirty_q i'4) cfg.max_write
+              /\ (forall i'5: int. 0 <= i'5 /\ i'5 < Seq.length (view_Vec_usize_Global state.flushed)
+                -> UInt64.lt (index_Vec_usize_Global state.flushed i'5) cfg.max_write)))))))
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec cache_drop_record [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 403 4 407 31]
+  (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (id'1: UInt64.t) (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:cache_drop_record requires] ([@stop_split] [@expl:cache_drop_record requires #0] [%#smodel'4] valid_config config)
+  /\ ([@stop_split] [@expl:cache_drop_record requires #1] [%#smodel'5] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:cache_drop_record requires #2] [%#smodel'6] UInt64.lt id'1 config.max_cache)}
+  (! bb0
+  [ bb0 = s0
+    [ s0 = check_cache [%#smodel] {self.current} {config} {id'1}
+        (fun (_x: t_Result_unit_ModelError) -> [ &_17 <- _x ] s1)
+    | s1 = branch_Result_unit_ModelError [%#smodel'0] {_17}
+        (fun (_x: t_ControlFlow_Result_Infallible_ModelError_unit) -> [ &_16 <- _x ] s2)
+    | s2 = any
+      [ br0 (x0: ()) -> {_16 = Continue x0} (! bb5)
+      | br1 (x0: t_Result_Infallible_ModelError) -> {_16 = Break x0} (! bb4) ] ]
+  | bb4 = s0
+    [ s0 = -{resolve_refmut_ModelState self}- s1
+    | s1 = elim_Break {_16} (fun (r0: t_Result_Infallible_ModelError) -> [ &residual <- r0 ] s2)
+    | s2 = from_residual_Result_unit_ModelError [%#smodel'0] {residual}
+        (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = return {_ret} ]
+  | bb5 = any [ br0 -> {self.current.crashed = false} (! bb9) | br1 -> {self.current.crashed} (! bb8) ]
+  | bb8 = s0 [ s0 = -{resolve_refmut_ModelState self}- s1 | s1 = [ &_ret <- Ok _29 ] s2 | s2 = return {_ret} ]
+  | bb9 = s0
+    [ s0 = index_Vec_CleanRecord_Global [%#smodel'1] {self.current.cache_store} {id'1}
+        (fun (_x: t_CleanRecord) -> [ &_32 <- _x ] s1)
+    | s1 = any [ br0 -> {_32.present = false} (! bb14) | br1 -> {_32.present} (! bb11) ] ]
+  | bb11 = s0
+    [ s0 = absent [%#smodel'2] (fun (_x: t_CleanRecord) -> [ &_35 <- _x ] s1)
+    | s1 = MutBorrow.borrow_final <t_Vec_CleanRecord_Global> {self.current.cache_store}
+        {MutBorrow.inherit_id (MutBorrow.get_id self) 4}
+        (fun (_bor: MutBorrow.t t_Vec_CleanRecord_Global) ->
+          [ &_37 <- _bor ] [ &self <- { self with current = { self.current with cache_store = _bor.final } } ] s2)
+    | s2 = index_mut_Vec_CleanRecord_Global [%#smodel'3] {_37} {id'1}
+        (fun (_x: MutBorrow.t t_CleanRecord) -> [ &_36 <- _x ] s3)
+    | s3 = [ &_36 <- { _36 with current = _35 } ] s4
+    | s4 = -{resolve_refmut_CleanRecord _36}- s5
+    | s5 = -{resolve_refmut_ModelState self}- s6
+    | s6 = bb15 ]
+  | bb14 = s0 [ s0 = -{resolve_refmut_ModelState self}- s1 | s1 = bb15 ]
+  | bb15 = s0 [ s0 = [ &_ret <- Ok _39 ] s1 | s1 = return {_ret} ] ]
+  [ & _ret: t_Result_unit_ModelError = Any.any_l ()
+  | & self: MutBorrow.t t_ModelState = self
+  | & config: t_ModelConfig = config
+  | & id'1: UInt64.t = id'1
+  | & _16: t_ControlFlow_Result_Infallible_ModelError_unit = Any.any_l ()
+  | & _17: t_Result_unit_ModelError = Any.any_l ()
+  | & residual: t_Result_Infallible_ModelError = Any.any_l ()
+  | & _29: () = Any.any_l ()
+  | & _32: t_CleanRecord = Any.any_l ()
+  | & _35: t_CleanRecord = Any.any_l ()
+  | & _36: MutBorrow.t t_CleanRecord = Any.any_l ()
+  | & _37: MutBorrow.t t_Vec_CleanRecord_Global = Any.any_l ()
+  | & _39: () = Any.any_l () ])
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:cache_drop_record ensures] [%#smodel'7] shape_ok self.final config}
+    (! return {result}) ]

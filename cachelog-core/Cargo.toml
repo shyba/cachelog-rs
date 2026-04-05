@@ -1,0 +1,20 @@
+[package]
+name = "cachelog-core"
+version = "0.1.0"
+edition = "2024"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(creusot)'] }
+
+[lib]
+name = "cachelog_core"
+
+[features]
+default = []
+serde = ["dep:serde"]
+creusot = []
+
+[dependencies]
+thiserror = "2"
+serde = { version = "1", features = ["derive"], optional = true }
+creusot-std = { path = "/tmp/creusot-install-check/creusot-std" }

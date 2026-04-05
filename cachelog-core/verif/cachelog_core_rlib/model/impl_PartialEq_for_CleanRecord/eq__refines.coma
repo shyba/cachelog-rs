@@ -1,0 +1,53 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 41 27 41 36 *)
+
+(* <model::CleanRecord as std::cmp::PartialEq> *)
+
+let%span smodel = "/tmp/creusot-install-check/creusot-std/src/model.rs" 36 8 36 28
+let%span smodel'0 = "/tmp/creusot-install-check/creusot-std/src/model.rs" 53 8 53 12
+let%span soption = "/tmp/creusot-install-check/creusot-std/src/std/option.rs" 13 8 16 9
+let%span snum = "/tmp/creusot-install-check/creusot-std/src/std/num.rs" 25 28 25 33
+let%span scmp = "/tmp/creusot-install-check/creusot-std/src/std/cmp.rs" 14 26 14 75
+let%span slib = "/tmp/creusot-install-check/creusot-std-proc/src/lib.rs" 90 0 90 44
+
+use creusot.int.UInt64
+
+type t_Option_usize = None | Some UInt64.t
+
+type t_CleanRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+type t_Option_Int = None'0 | Some'0 int
+
+type t_CleanRecordDeepModel = { present'0: bool; id'0: t_Option_Int; key'0: int; value'0: int }
+
+predicate deep_model_bool [@inline:trivial] (self: bool) = [%#smodel'0] self
+
+meta "rewrite_def" predicate deep_model_bool
+
+function deep_model_usize [@inline:trivial] (self: UInt64.t) : int = [%#snum] UInt64.t'int self
+
+meta "rewrite_def" function deep_model_usize
+
+function deep_model_Option_usize [@inline:trivial] (self: t_Option_usize) : t_Option_Int = [%#soption] match self with
+    | Some t -> Some'0 (deep_model_usize t)
+    | None -> None'0
+    end
+
+meta "rewrite_def" function deep_model_Option_usize
+
+function deep_model_CleanRecord [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 40 27 40 36] (self: t_CleanRecord) : t_CleanRecordDeepModel
+ = [%#slib] { present'0 = deep_model_bool self.present;
+              id'0 = deep_model_Option_usize self.id;
+              key'0 = deep_model_usize self.key;
+              value'0 = deep_model_usize self.value }
+
+function deep_model_ref_CleanRecord [@inline:trivial] (self: t_CleanRecord) : t_CleanRecordDeepModel =
+  [%#smodel] deep_model_CleanRecord self
+
+meta "rewrite_def" function deep_model_ref_CleanRecord
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+goal refines: forall self_: t_CleanRecord. forall rhs: t_CleanRecord. forall result: bool. [%#scmp] result
+        = (deep_model_ref_CleanRecord self_ = deep_model_ref_CleanRecord rhs)

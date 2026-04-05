@@ -1,0 +1,25 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 259 4 259 27 *)
+
+(* model::DurableValue *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 261 21 261 26
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 262 19 262 20
+
+use creusot.int.UInt64
+use creusot.prelude.Any
+
+type t_Option_usize = None | Some UInt64.t
+
+type t_DurableValue = { present: bool; value: UInt64.t; seq: t_Option_usize }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec absent [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 259 4 259 27] (return (x: t_DurableValue)) =
+  (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_1 <- None ] s1
+    | s1 = [ &_ret <- { present = ([%#smodel] false); value = ([%#smodel'0] (0: UInt64.t)); seq = _1 } ] s2
+    | s2 = return {_ret} ] ] [ & _ret: t_DurableValue = Any.any_l () | & _1: t_Option_usize = Any.any_l () ])
+  [ return (result: t_DurableValue) -> (! return {result}) ]

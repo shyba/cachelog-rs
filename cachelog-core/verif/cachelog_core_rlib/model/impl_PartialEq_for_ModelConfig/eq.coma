@@ -1,0 +1,34 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 60 33 60 42 *)
+
+(* <model::ModelConfig as std::cmp::PartialEq> *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 65 4 65 24
+
+use creusot.int.UInt64
+use creusot.prelude.Any
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec eq_ModelConfig [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 60 33 60 42] (self: t_ModelConfig)
+  (other: t_ModelConfig) (return (x: bool)) = (! bb0
+  [ bb0 = s0
+    [ s0 = [ &_3 <- self.key_count = other.key_count ] s1
+    | s1 = any [ br0 -> {_3 = false} (! bb7) | br1 -> {_3} (! bb1) ] ]
+  | bb1 = s0
+    [ s0 = [ &_6 <- self.value_count = other.value_count ] s1
+    | s1 = any [ br0 -> {_6 = false} (! bb7) | br1 -> {_6} (! bb2) ] ]
+  | bb2 = s0
+    [ s0 = [ &_9 <- self.max_write = other.max_write ] s1
+    | s1 = any [ br0 -> {_9 = false} (! bb7) | br1 -> {_9} (! bb3) ] ]
+  | bb3 = s0 [ s0 = [ &_ret <- self.max_cache = other.max_cache ] s1 | s1 = return {_ret} ]
+  | bb7 = s0 [ s0 = [ &_ret <- [%#smodel] false ] s1 | s1 = return {_ret} ] ]
+  [ & _ret: bool = Any.any_l ()
+  | & self: t_ModelConfig = self
+  | & other: t_ModelConfig = other
+  | & _3: bool = Any.any_l ()
+  | & _6: bool = Any.any_l ()
+  | & _9: bool = Any.any_l () ]) [ return (result: bool) -> (! return {result}) ]

@@ -1,0 +1,526 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 302 4 302 96 *)
+
+(* model::ModelState *)
+
+let%span smodel = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 311 32 311 50
+let%span smodel'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 310 45 310 74
+let%span smodel'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 309 53 309 91
+let%span smodel'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 308 49 308 83
+let%span smodel'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 307 46 307 76
+let%span smodel'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 306 45 306 74
+let%span smodel'5 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 305 43 305 74
+let%span smodel'6 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 304 53 304 90
+let%span smodel'7 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 468 45 468 80
+let%span smodel'8 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 469 45 469 83
+let%span smodel'9 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 470 44 470 82
+let%span smodel'10 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 441 45 441 80
+let%span smodel'11 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 442 45 442 83
+let%span smodel'12 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 443 45 443 67
+let%span smodel'13 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 444 44 444 82
+let%span smodel'14 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 418 45 418 80
+let%span smodel'15 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 419 45 419 83
+let%span smodel'16 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 420 45 420 66
+let%span smodel'17 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 421 44 421 82
+let%span smodel'18 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 399 45 399 80
+let%span smodel'19 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 400 45 400 83
+let%span smodel'20 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 401 45 401 66
+let%span smodel'21 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 402 44 402 82
+let%span smodel'22 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 381 45 381 80
+let%span smodel'23 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 382 45 382 83
+let%span smodel'24 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 383 45 383 67
+let%span smodel'25 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 384 44 384 82
+let%span smodel'26 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 361 45 361 80
+let%span smodel'27 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 362 45 362 83
+let%span smodel'28 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 363 45 363 66
+let%span smodel'29 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 364 44 364 82
+let%span smodel'30 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 342 45 342 80
+let%span smodel'31 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 343 45 343 83
+let%span smodel'32 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 344 44 344 82
+let%span smodel'33 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 315 45 315 80
+let%span smodel'34 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 316 45 316 83
+let%span smodel'35 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 317 45 317 67
+let%span smodel'36 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 318 45 318 71
+let%span smodel'37 = "/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 319 44 319 82
+let%span svec = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 18 14 18 41
+let%span svec'0 = "/tmp/creusot-install-check/creusot-std/src/std/vec.rs" 44 20 44 29
+let%span sproofs = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 14 8 17 30
+let%span sproofs'0 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 86 8 107 44
+let%span sproofs'1 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 24 8 28 9
+let%span sproofs'2 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 35 8 46 9
+let%span sproofs'3 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 53 8 64 9
+let%span sproofs'4 = "/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 71 8 79 9
+let%span sord = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 162 41 162 102
+let%span sord'0 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 168 41 168 99
+let%span sord'1 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 174 41 174 99
+let%span sord'2 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 180 41 180 102
+let%span sord'3 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 186 41 186 83
+let%span sord'4 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 192 42 192 59
+let%span sord'5 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 193 42 193 59
+let%span sord'6 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 194 41 194 58
+let%span sord'7 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 200 42 200 83
+let%span sord'8 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 201 41 201 85
+let%span sord'9 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 207 42 207 86
+let%span sord'10 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 208 41 208 82
+let%span sord'11 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 214 41 214 97
+let%span sord'12 = "/tmp/creusot-install-check/creusot-std/src/logic/ord.rs" 296 16 302 17
+
+use creusot.int.UInt64
+use creusot.prelude.MutBorrow
+use seq.Seq
+use creusot.prelude.Any
+use int.Int
+
+type t_ModelStep =
+  | WriterWrite UInt64.t UInt64.t
+  | FlusherFlushNext
+  | FlusherDrop UInt64.t
+  | CacheInsert UInt64.t
+  | CacheDropRecord UInt64.t
+  | CacheCleanupVisible UInt64.t
+  | ReaderStep UInt64.t
+  | Crash
+
+type t_Vec_VisibleRef_Global
+
+type t_Vec_DirtyRecord_Global
+
+type t_Vec_usize_Global
+
+type t_Vec_CleanRecord_Global
+
+type t_Vec_DurableValue_Global
+
+type t_Vec_bool_Global
+
+type t_ModelState = {
+  visible: t_Vec_VisibleRef_Global;
+  write_store: t_Vec_DirtyRecord_Global;
+  write_hist: t_Vec_DirtyRecord_Global;
+  dirty_q: t_Vec_usize_Global;
+  cache_store: t_Vec_CleanRecord_Global;
+  durable: t_Vec_DurableValue_Global;
+  flushed: t_Vec_usize_Global;
+  created_dirty: t_Vec_bool_Global;
+  next_write: UInt64.t;
+  next_cache: UInt64.t;
+  crashed: bool;
+  bad_read: bool }
+
+type t_ModelConfig = { key_count: UInt64.t; value_count: UInt64.t; max_write: UInt64.t; max_cache: UInt64.t }
+
+type t_ModelError = InvalidKey UInt64.t | InvalidValue UInt64.t | InvalidWriteId UInt64.t | InvalidCacheId UInt64.t
+
+type t_Result_unit_ModelError = Ok () | Err t_ModelError
+
+type t_Ordering = Less | Equal | Greater
+
+function cmp_log_usize (self: UInt64.t) (o: UInt64.t) : t_Ordering = [%#sord'12] if UInt64.lt self o then
+    Less
+  else
+    if self = o then Equal else Greater
+
+
+function eq_cmp_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom eq_cmp_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'11] (x = y) = (cmp_log_usize x y = Equal)
+
+function antisym2_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym2_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'9] cmp_log_usize x y = Greater)
+    -> ([%#sord'10] cmp_log_usize y x = Less)
+
+function antisym1_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom antisym1_usize_spec: forall x: UInt64.t, y: UInt64.t. ([%#sord'7] cmp_log_usize x y = Less)
+    -> ([%#sord'8] cmp_log_usize y x = Greater)
+
+function trans_usize (x: UInt64.t) (y: UInt64.t) (z: UInt64.t) (o: t_Ordering) : ()
+
+axiom trans_usize_spec: forall x: UInt64.t, y: UInt64.t, z: UInt64.t, o: t_Ordering. ([%#sord'4] cmp_log_usize x y = o)
+    -> ([%#sord'5] cmp_log_usize y z = o) -> ([%#sord'6] cmp_log_usize x z = o)
+
+function refl_usize (x: UInt64.t) : ()
+
+axiom refl_usize_spec: forall x: UInt64.t. [%#sord'3] cmp_log_usize x x = Equal
+
+function cmp_gt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_gt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'2] UInt64.gt x y = (cmp_log_usize x y = Greater)
+
+function cmp_ge_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_ge_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'1] UInt64.ge x y = (cmp_log_usize x y <> Less)
+
+function cmp_lt_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_lt_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord'0] UInt64.lt x y = (cmp_log_usize x y = Less)
+
+function cmp_le_log_usize (x: UInt64.t) (y: UInt64.t) : ()
+
+axiom cmp_le_log_usize_spec: forall x: UInt64.t, y: UInt64.t. [%#sord] UInt64.le x y = (cmp_log_usize x y <> Greater)
+
+predicate valid_config [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 12 0 12 45] (cfg: t_ModelConfig) =
+  [%#sproofs] UInt64.gt cfg.key_count (0: UInt64.t)
+  /\ UInt64.gt cfg.value_count (0: UInt64.t)
+  /\ UInt64.gt cfg.max_write (0: UInt64.t) /\ UInt64.gt cfg.max_cache (0: UInt64.t)
+
+type t_VisibleRef = None | Dirty UInt64.t | Clean UInt64.t
+
+constant const_MAX: UInt64.t = (18446744073709551615: UInt64.t)
+
+function view_Vec_VisibleRef_Global (self: t_Vec_VisibleRef_Global) : Seq.seq t_VisibleRef
+
+axiom view_Vec_VisibleRef_Global_spec:
+  forall self: t_Vec_VisibleRef_Global. [%#svec] Seq.length (view_Vec_VisibleRef_Global self) <= UInt64.t'int const_MAX
+
+type t_Option_usize = None'0 | Some'0 UInt64.t
+
+type t_DirtyRecord = { present: bool; id: t_Option_usize; key: UInt64.t; value: UInt64.t }
+
+function view_Vec_DirtyRecord_Global (self: t_Vec_DirtyRecord_Global) : Seq.seq t_DirtyRecord
+
+axiom view_Vec_DirtyRecord_Global_spec:
+  forall self: t_Vec_DirtyRecord_Global. [%#svec] Seq.length (view_Vec_DirtyRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+type t_CleanRecord = { present'0: bool; id'0: t_Option_usize; key'0: UInt64.t; value'0: UInt64.t }
+
+function view_Vec_CleanRecord_Global (self: t_Vec_CleanRecord_Global) : Seq.seq t_CleanRecord
+
+axiom view_Vec_CleanRecord_Global_spec:
+  forall self: t_Vec_CleanRecord_Global. [%#svec] Seq.length (view_Vec_CleanRecord_Global self)
+    <= UInt64.t'int const_MAX
+
+type t_DurableValue = { present'1: bool; value'1: UInt64.t; seq'1: t_Option_usize }
+
+function view_Vec_DurableValue_Global (self: t_Vec_DurableValue_Global) : Seq.seq t_DurableValue
+
+axiom view_Vec_DurableValue_Global_spec:
+  forall self: t_Vec_DurableValue_Global. [%#svec] Seq.length (view_Vec_DurableValue_Global self)
+    <= UInt64.t'int const_MAX
+
+function view_Vec_bool_Global (self: t_Vec_bool_Global) : Seq.seq bool
+
+axiom view_Vec_bool_Global_spec: forall self: t_Vec_bool_Global. [%#svec] Seq.length (view_Vec_bool_Global self)
+    <= UInt64.t'int const_MAX
+
+predicate visible_ref_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 22 0 22 68] (visible'0: t_VisibleRef) (cfg: t_ModelConfig) =
+  [%#sproofs'1] match visible'0 with
+    | None -> true
+    | Dirty id'1 -> UInt64.lt id'1 cfg.max_write
+    | Clean id'1 -> UInt64.lt id'1 cfg.max_cache
+    end
+
+function index_Vec_VisibleRef_Global [@inline:trivial] (self: t_Vec_VisibleRef_Global) (ix: int) : t_VisibleRef =
+  [%#svec'0] Seq.get (view_Vec_VisibleRef_Global self) ix
+
+meta "rewrite_def" function index_Vec_VisibleRef_Global
+
+predicate dirty_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 33 0 33 69] (record: t_DirtyRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'2] if not record.present then
+    true
+  else
+    record.id <> None'0
+    /\ match record.id with
+      | Some'0 id'1 -> UInt64.lt id'1 cfg.max_write
+      /\ UInt64.lt record.key cfg.key_count /\ UInt64.lt record.value cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_DirtyRecord_Global [@inline:trivial] (self: t_Vec_DirtyRecord_Global) (ix: int) : t_DirtyRecord =
+  [%#svec'0] Seq.get (view_Vec_DirtyRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_DirtyRecord_Global
+
+predicate clean_record_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 51 0 51 69] (record: t_CleanRecord) (cfg: t_ModelConfig) =
+  [%#sproofs'3] if not record.present'0 then
+    true
+  else
+    record.id'0 <> None'0
+    /\ match record.id'0 with
+      | Some'0 id'1 -> UInt64.lt id'1 cfg.max_cache
+      /\ UInt64.lt record.key'0 cfg.key_count /\ UInt64.lt record.value'0 cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_CleanRecord_Global [@inline:trivial] (self: t_Vec_CleanRecord_Global) (ix: int) : t_CleanRecord =
+  [%#svec'0] Seq.get (view_Vec_CleanRecord_Global self) ix
+
+meta "rewrite_def" function index_Vec_CleanRecord_Global
+
+predicate durable_value_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 69 0 69 70] (value'2: t_DurableValue) (cfg: t_ModelConfig) =
+  [%#sproofs'4] if not value'2.present'1 then
+    true
+  else
+    value'2.seq'1 <> None'0
+    /\ match value'2.seq'1 with
+      | Some'0 seq -> UInt64.lt seq cfg.max_write /\ UInt64.lt value'2.value'1 cfg.value_count
+      | None'0 -> false
+      end
+
+
+function index_Vec_DurableValue_Global [@inline:trivial] (self: t_Vec_DurableValue_Global) (ix: int) : t_DurableValue =
+  [%#svec'0] Seq.get (view_Vec_DurableValue_Global self) ix
+
+meta "rewrite_def" function index_Vec_DurableValue_Global
+
+function view_Vec_usize_Global (self: t_Vec_usize_Global) : Seq.seq UInt64.t
+
+axiom view_Vec_usize_Global_spec: forall self: t_Vec_usize_Global. [%#svec] Seq.length (view_Vec_usize_Global self)
+    <= UInt64.t'int const_MAX
+
+function index_Vec_usize_Global [@inline:trivial] (self: t_Vec_usize_Global) (ix: int) : UInt64.t =
+  [%#svec'0] Seq.get (view_Vec_usize_Global self) ix
+
+meta "rewrite_def" function index_Vec_usize_Global
+
+predicate shape_ok [#"/home/user/repos/tableflip-rs/cachelog-core/src/proofs.rs" 84 0 84 60] (state: t_ModelState) (cfg: t_ModelConfig) =
+  [%#sproofs'0] Seq.length (view_Vec_VisibleRef_Global state.visible) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_store) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_DirtyRecord_Global state.write_hist) = UInt64.t'int cfg.max_write
+  /\ Seq.length (view_Vec_CleanRecord_Global state.cache_store) = UInt64.t'int cfg.max_cache
+  /\ Seq.length (view_Vec_DurableValue_Global state.durable) = UInt64.t'int cfg.key_count
+  /\ Seq.length (view_Vec_bool_Global state.created_dirty) = UInt64.t'int cfg.max_write
+  /\ UInt64.le state.next_write cfg.max_write
+  /\ UInt64.le state.next_cache cfg.max_cache
+  /\ (forall i: int. 0 <= i /\ i < Seq.length (view_Vec_VisibleRef_Global state.visible)
+    -> visible_ref_ok (index_Vec_VisibleRef_Global state.visible i) cfg
+    /\ (forall i'0: int. 0 <= i'0 /\ i'0 < Seq.length (view_Vec_DirtyRecord_Global state.write_store)
+      -> dirty_record_ok (index_Vec_DirtyRecord_Global state.write_store i'0) cfg
+      /\ (forall i'1: int. 0 <= i'1 /\ i'1 < Seq.length (view_Vec_DirtyRecord_Global state.write_hist)
+        -> dirty_record_ok (index_Vec_DirtyRecord_Global state.write_hist i'1) cfg
+        /\ (forall i'2: int. 0 <= i'2 /\ i'2 < Seq.length (view_Vec_CleanRecord_Global state.cache_store)
+          -> clean_record_ok (index_Vec_CleanRecord_Global state.cache_store i'2) cfg
+          /\ (forall i'3: int. 0 <= i'3 /\ i'3 < Seq.length (view_Vec_DurableValue_Global state.durable)
+            -> durable_value_ok (index_Vec_DurableValue_Global state.durable i'3) cfg
+            /\ (forall i'4: int. 0 <= i'4 /\ i'4 < Seq.length (view_Vec_usize_Global state.dirty_q)
+              -> UInt64.lt (index_Vec_usize_Global state.dirty_q i'4) cfg.max_write
+              /\ (forall i'5: int. 0 <= i'5 /\ i'5 < Seq.length (view_Vec_usize_Global state.flushed)
+                -> UInt64.lt (index_Vec_usize_Global state.flushed i'5) cfg.max_write)))))))
+
+let rec crash (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:crash requires] ([@stop_split] [@expl:crash requires #0] [%#smodel'7] valid_config config)
+  /\ ([@stop_split] [@expl:crash requires #1] [%#smodel'8] shape_ok self.current config)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:crash ensures] [%#smodel'9] shape_ok self.final config}
+    (! return {result}) ]
+
+predicate resolve_refmut_ModelState [@inline:trivial] (_1: MutBorrow.t t_ModelState) = _1.final = _1.current
+
+meta "rewrite_def" predicate resolve_refmut_ModelState
+
+let rec elim_ReaderStep (_x: t_ModelStep) (return (key'1: UInt64.t)) = any
+  [ _k (key'1: UInt64.t) -> {ReaderStep key'1 = _x} (! return {key'1})
+  | _chk -> (! {[@expl:elim ReaderStep] match _x with
+      | ReaderStep _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec reader_step (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (key'1: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:reader_step requires] ([@stop_split] [@expl:reader_step requires #0] [%#smodel'10] valid_config config)
+  /\ ([@stop_split] [@expl:reader_step requires #1] [%#smodel'11] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:reader_step requires #2] [%#smodel'12] UInt64.lt key'1 config.key_count)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:reader_step ensures] [%#smodel'13] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec elim_CacheCleanupVisible (_x: t_ModelStep) (return (id'1: UInt64.t)) = any
+  [ _k (id'1: UInt64.t) -> {CacheCleanupVisible id'1 = _x} (! return {id'1})
+  | _chk -> (! {[@expl:elim CacheCleanupVisible] match _x with
+      | CacheCleanupVisible _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec cache_cleanup_visible (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (id'1: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:cache_cleanup_visible requires] ([@stop_split] [@expl:cache_cleanup_visible requires #0] [%#smodel'14] valid_config config)
+  /\ ([@stop_split] [@expl:cache_cleanup_visible requires #1] [%#smodel'15] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:cache_cleanup_visible requires #2] [%#smodel'16] UInt64.lt id'1 config.max_cache)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:cache_cleanup_visible ensures] [%#smodel'17] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec elim_CacheDropRecord (_x: t_ModelStep) (return (id'1: UInt64.t)) = any
+  [ _k (id'1: UInt64.t) -> {CacheDropRecord id'1 = _x} (! return {id'1})
+  | _chk -> (! {[@expl:elim CacheDropRecord] match _x with
+      | CacheDropRecord _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec cache_drop_record (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (id'1: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:cache_drop_record requires] ([@stop_split] [@expl:cache_drop_record requires #0] [%#smodel'18] valid_config config)
+  /\ ([@stop_split] [@expl:cache_drop_record requires #1] [%#smodel'19] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:cache_drop_record requires #2] [%#smodel'20] UInt64.lt id'1 config.max_cache)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:cache_drop_record ensures] [%#smodel'21] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec elim_CacheInsert (_x: t_ModelStep) (return (key'1: UInt64.t)) = any
+  [ _k (key'1: UInt64.t) -> {CacheInsert key'1 = _x} (! return {key'1})
+  | _chk -> (! {[@expl:elim CacheInsert] match _x with
+      | CacheInsert _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec cache_insert (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (key'1: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:cache_insert requires] ([@stop_split] [@expl:cache_insert requires #0] [%#smodel'22] valid_config config)
+  /\ ([@stop_split] [@expl:cache_insert requires #1] [%#smodel'23] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:cache_insert requires #2] [%#smodel'24] UInt64.lt key'1 config.key_count)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:cache_insert ensures] [%#smodel'25] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec elim_FlusherDrop (_x: t_ModelStep) (return (id'1: UInt64.t)) = any
+  [ _k (id'1: UInt64.t) -> {FlusherDrop id'1 = _x} (! return {id'1})
+  | _chk -> (! {[@expl:elim FlusherDrop] match _x with
+      | FlusherDrop _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec flusher_drop (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (id'1: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:flusher_drop requires] ([@stop_split] [@expl:flusher_drop requires #0] [%#smodel'26] valid_config config)
+  /\ ([@stop_split] [@expl:flusher_drop requires #1] [%#smodel'27] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:flusher_drop requires #2] [%#smodel'28] UInt64.lt id'1 config.max_write)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:flusher_drop ensures] [%#smodel'29] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec flusher_flush_next (self: MutBorrow.t t_ModelState) (config: t_ModelConfig)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:flusher_flush_next requires] ([@stop_split] [@expl:flusher_flush_next requires #0] [%#smodel'30] valid_config config)
+  /\ ([@stop_split] [@expl:flusher_flush_next requires #1] [%#smodel'31] shape_ok self.current config)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:flusher_flush_next ensures] [%#smodel'32] shape_ok self.final config}
+    (! return {result}) ]
+
+let rec elim_WriterWrite (_x: t_ModelStep) (return (key'1: UInt64.t) (value'2: UInt64.t)) = any
+  [ _k (key'1: UInt64.t) (value'2: UInt64.t) -> {WriterWrite key'1 value'2 = _x} (! return {key'1} {value'2})
+  | _chk -> (! {[@expl:elim WriterWrite] match _x with
+      | WriterWrite _ _ -> true
+      | _ -> false
+      end}
+    any) ]
+
+let rec writer_write (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (key'1: UInt64.t) (value'2: UInt64.t)
+  (return (x: t_Result_unit_ModelError)) =
+  {[@stop_split] [@expl:writer_write requires] ([@stop_split] [@expl:writer_write requires #0] [%#smodel'33] valid_config config)
+  /\ ([@stop_split] [@expl:writer_write requires #1] [%#smodel'34] shape_ok self.current config)
+  /\ ([@stop_split] [@expl:writer_write requires #2] [%#smodel'35] UInt64.lt key'1 config.key_count)
+  /\ ([@stop_split] [@expl:writer_write requires #3] [%#smodel'36] UInt64.lt value'2 config.value_count)}
+  any
+  [ return (result: t_Result_unit_ModelError) ->
+  {[@stop_split] [@expl:writer_write ensures] [%#smodel'37] shape_ok self.final config}
+    (! return {result}) ]
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec apply_step [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 302 4 302 96]
+  (self: MutBorrow.t t_ModelState) (config: t_ModelConfig) (step: t_ModelStep) (return (x: t_Result_unit_ModelError)) =
+  (! bb0
+  [ bb0 = any
+    [ br0 (x0: UInt64.t) (x1: UInt64.t) -> {step = WriterWrite x0 x1} (! bb16)
+    | br1 -> {step = FlusherFlushNext} (! bb15)
+    | br2 (x0: UInt64.t) -> {step = FlusherDrop x0} (! bb14)
+    | br3 (x0: UInt64.t) -> {step = CacheInsert x0} (! bb13)
+    | br4 (x0: UInt64.t) -> {step = CacheDropRecord x0} (! bb12)
+    | br5 (x0: UInt64.t) -> {step = CacheCleanupVisible x0} (! bb11)
+    | br6 (x0: UInt64.t) -> {step = ReaderStep x0} (! bb10)
+    | br7 -> {step = Crash} (! bb9) ]
+  | bb9 = s0
+    [ s0 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_33 <- _bor ] [ &self <- { self with current = _bor.final } ] s1)
+    | s1 = crash [%#smodel] {_33} {config} (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s2)
+    | s2 = -{resolve_refmut_ModelState self}- s3
+    | s3 = return {_ret} ]
+  | bb10 = s0
+    [ s0 = elim_ReaderStep {step} (fun (rkey: UInt64.t) -> [ &key'3 <- rkey ] s1)
+    | s1 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_30 <- _bor ] [ &self <- { self with current = _bor.final } ] s2)
+    | s2 = reader_step [%#smodel'0] {_30} {config} {key'3} (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = -{resolve_refmut_ModelState self}- s4
+    | s4 = return {_ret} ]
+  | bb11 = s0
+    [ s0 = elim_CacheCleanupVisible {step} (fun (rid: UInt64.t) -> [ &id'3 <- rid ] s1)
+    | s1 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_26 <- _bor ] [ &self <- { self with current = _bor.final } ] s2)
+    | s2 = cache_cleanup_visible [%#smodel'1] {_26} {config} {id'3}
+        (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = -{resolve_refmut_ModelState self}- s4
+    | s4 = return {_ret} ]
+  | bb12 = s0
+    [ s0 = elim_CacheDropRecord {step} (fun (rid: UInt64.t) -> [ &id'2 <- rid ] s1)
+    | s1 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_22 <- _bor ] [ &self <- { self with current = _bor.final } ] s2)
+    | s2 = cache_drop_record [%#smodel'2] {_22} {config} {id'2}
+        (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = -{resolve_refmut_ModelState self}- s4
+    | s4 = return {_ret} ]
+  | bb13 = s0
+    [ s0 = elim_CacheInsert {step} (fun (rkey: UInt64.t) -> [ &key'2 <- rkey ] s1)
+    | s1 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_18 <- _bor ] [ &self <- { self with current = _bor.final } ] s2)
+    | s2 = cache_insert [%#smodel'3] {_18} {config} {key'2} (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = -{resolve_refmut_ModelState self}- s4
+    | s4 = return {_ret} ]
+  | bb14 = s0
+    [ s0 = elim_FlusherDrop {step} (fun (rid: UInt64.t) -> [ &id'1 <- rid ] s1)
+    | s1 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_14 <- _bor ] [ &self <- { self with current = _bor.final } ] s2)
+    | s2 = flusher_drop [%#smodel'4] {_14} {config} {id'1} (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s3)
+    | s3 = -{resolve_refmut_ModelState self}- s4
+    | s4 = return {_ret} ]
+  | bb15 = s0
+    [ s0 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_11 <- _bor ] [ &self <- { self with current = _bor.final } ] s1)
+    | s1 = flusher_flush_next [%#smodel'5] {_11} {config} (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s2)
+    | s2 = -{resolve_refmut_ModelState self}- s3
+    | s3 = return {_ret} ]
+  | bb16 = s0
+    [ s0 = elim_WriterWrite {step} (fun (rkey: UInt64.t) (rvalue: UInt64.t) -> [ &key'1 <- rkey ] s1)
+    | s1 = elim_WriterWrite {step} (fun (rkey: UInt64.t) (rvalue: UInt64.t) -> [ &value'2 <- rvalue ] s2)
+    | s2 = MutBorrow.borrow_final <t_ModelState> {self.current} {MutBorrow.get_id self}
+        (fun (_bor: MutBorrow.t t_ModelState) -> [ &_7 <- _bor ] [ &self <- { self with current = _bor.final } ] s3)
+    | s3 = writer_write [%#smodel'6] {_7} {config} {key'1} {value'2}
+        (fun (_x: t_Result_unit_ModelError) -> [ &_ret <- _x ] s4)
+    | s4 = -{resolve_refmut_ModelState self}- s5
+    | s5 = return {_ret} ] ]
+  [ & _ret: t_Result_unit_ModelError = Any.any_l ()
+  | & self: MutBorrow.t t_ModelState = self
+  | & config: t_ModelConfig = config
+  | & step: t_ModelStep = step
+  | & key'1: UInt64.t = Any.any_l ()
+  | & value'2: UInt64.t = Any.any_l ()
+  | & _7: MutBorrow.t t_ModelState = Any.any_l ()
+  | & _11: MutBorrow.t t_ModelState = Any.any_l ()
+  | & id'1: UInt64.t = Any.any_l ()
+  | & _14: MutBorrow.t t_ModelState = Any.any_l ()
+  | & key'2: UInt64.t = Any.any_l ()
+  | & _18: MutBorrow.t t_ModelState = Any.any_l ()
+  | & id'2: UInt64.t = Any.any_l ()
+  | & _22: MutBorrow.t t_ModelState = Any.any_l ()
+  | & id'3: UInt64.t = Any.any_l ()
+  | & _26: MutBorrow.t t_ModelState = Any.any_l ()
+  | & key'3: UInt64.t = Any.any_l ()
+  | & _30: MutBorrow.t t_ModelState = Any.any_l ()
+  | & _33: MutBorrow.t t_ModelState = Any.any_l () ])
+  [ return (result: t_Result_unit_ModelError) -> (! return {result}) ]

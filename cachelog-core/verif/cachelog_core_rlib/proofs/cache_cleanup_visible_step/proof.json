@@ -1,0 +1,12 @@
+{
+  "profile": [],
+  "proofs": {
+    "Coma": {
+      "vc_cache_cleanup_visible": { "prover": "alt-ergo", "time": 0.039 },
+      "vc_cache_cleanup_visible_step": {
+        "tactic": "compute_specified",
+        "children": [ { "prover": "alt-ergo", "time": 0.038 } ]
+      }
+    }
+  }
+}

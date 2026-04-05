@@ -6,16 +6,21 @@ edition = "2024"
 [lib]
 name = "cachelog_model"
 
+[[bin]]
+name = "cachelog-model"
+path = "src/main.rs"
+required-features = ["cli"]
+
 [features]
 default = []
-creusot = ["dep:creusot-contracts"]
+cli = []
 tla-connect = ["dep:tla-connect", "dep:itf"]
 
 [dependencies]
+cachelog-core = { path = "../cachelog-core", default-features = false, features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-creusot-contracts = { version = "0.8.0", optional = true }
 tla-connect = { version = "0.0.4", optional = true }
 itf = { version = "0.4.0", optional = true }
 

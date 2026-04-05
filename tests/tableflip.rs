@@ -85,6 +85,43 @@ fn mark_flushed_drops_flushed_prefix_immediately() {
 }
 
 #[test]
+fn flushing_old_dirty_does_not_clear_newer_visible_dirty() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    let old_id = map.insert_dirty("same".to_owned(), 1);
+    let new_id = map.insert_dirty("same".to_owned(), 2);
+
+    let batch = map.flush_batch(1);
+    assert_eq!(
+        batch.iter().map(|entry| entry.id).collect::<Vec<_>>(),
+        vec![old_id]
+    );
+    assert_eq!(map.mark_flushed(&batch), 1);
+    drop(batch);
+
+    assert_eq!(
+        read_triplet(&map, &"same".to_owned()),
+        Some((2, EntryState::Dirty, VisibleRef::Dirty(new_id)))
+    );
+    assert_eq!(map.dirty_log_len(), 1);
+}
+
+#[test]
+fn mark_flushed_does_not_remove_newer_visible_dirty() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    map.insert_dirty("same".to_owned(), 1);
+    let batch = map.flush_batch(1);
+    let newer = map.insert_dirty("same".to_owned(), 2);
+
+    assert_eq!(map.mark_flushed(&batch), 1);
+    assert_eq!(
+        read_triplet(&map, &"same".to_owned()),
+        Some((2, EntryState::Dirty, VisibleRef::Dirty(newer)))
+    );
+}
+
+#[test]
 fn flush_batch_reuses_inflight_batch_until_marked_flushed() {
     let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
 
@@ -104,11 +141,14 @@ fn flush_batch_reuses_inflight_batch_until_marked_flushed() {
 
     assert_eq!(map.mark_flushed(&first), 1);
     let next = map.flush_batch(1);
-    assert_eq!(next.iter().map(|entry| entry.id).collect::<Vec<_>>(), vec![1]);
+    assert_eq!(
+        next.iter().map(|entry| entry.id).collect::<Vec<_>>(),
+        vec![1]
+    );
 }
 
 #[test]
-fn evicting_clean_entry_creates_stale_ref_until_cleanup() {
+fn evicting_clean_entry_removes_visible_clean_ref_immediately() {
     let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
 
     assert_eq!(map.insert_clean_if_absent("clean".to_owned(), 5), Some(0));

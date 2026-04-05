@@ -1,0 +1,24 @@
+(* #"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 178 23 178 25 *)
+
+(* <model::ModelStep as std::cmp::Eq> *)
+
+use creusot.prelude.Any
+use creusot.int.UInt64
+
+type t_ModelStep =
+  | WriterWrite UInt64.t UInt64.t
+  | FlusherFlushNext
+  | FlusherDrop UInt64.t
+  | CacheInsert UInt64.t
+  | CacheDropRecord UInt64.t
+  | CacheCleanupVisible UInt64.t
+  | ReaderStep UInt64.t
+  | Crash
+
+meta "compute_max_steps" 1000000
+
+meta "select_lsinst" "all"
+
+let rec assert_fields_are_eq_ModelStep [#"/home/user/repos/tableflip-rs/cachelog-core/src/model.rs" 178 23 178 25]
+  (self: t_ModelStep) (return (x: ())) = (! bb0
+  [ bb0 = return {_ret} ] [ & _ret: () = Any.any_l () ]) [ return (result: ()) -> (! return {result}) ]
