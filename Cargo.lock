@@ -319,6 +319,8 @@ dependencies = [
  "cfg-if",
  "generator",
  "scoped-tls",
+ "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
 ]
@@ -494,6 +496,9 @@ name = "saa"
 version = "5.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "16c7f49c9d5caa3bf4b3106900484b447b9253fe99670ceb81cb6cb5027855e1"
+dependencies = [
+ "loom",
+]
 
 [[package]]
 name = "same-file"
@@ -510,6 +515,7 @@ version = "3.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f448f7d881535036452f0cac656a41463807f095eda504890764ca7d11e2a2ea"
 dependencies = [
+ "loom",
  "saa",
  "sdd",
 ]
@@ -531,6 +537,9 @@ name = "sdd"
 version = "4.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6ca0e33fc1ae39e36b2d1fdfc8ee470b26397b642ff87572a59a36ff4f2340b"
+dependencies = [
+ "loom",
+]
 
 [[package]]
 name = "serde"

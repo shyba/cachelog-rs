@@ -1,11 +1,7 @@
 use std::collections::VecDeque;
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-
-use crossbeam_queue::ArrayQueue;
-use parking_lot::Mutex;
+use crate::sync::{Arc, AtomicU64, AtomicUsize, BoundedQueue, Mutex, Ordering, lock, new_mutex};
 use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
 
@@ -119,7 +115,7 @@ where
 {
     visible: ConcurrentHashMap<K, VisibleValue<K, V>, H>,
     dirty_log: Mutex<DirtyLog<K, V>>,
-    clean_fifo: ArrayQueue<(K, CacheId)>,
+    clean_fifo: BoundedQueue<(K, CacheId)>,
     clean_count: AtomicUsize,
     next_cache: AtomicU64,
 }
@@ -144,8 +140,8 @@ where
                 config.visible_capacity,
                 build_hasher,
             ),
-            dirty_log: Mutex::new(DirtyLog::with_capacity(config.dirty_log_capacity)),
-            clean_fifo: ArrayQueue::new(config.clean_capacity.max(1)),
+            dirty_log: new_mutex(DirtyLog::with_capacity(config.dirty_log_capacity)),
+            clean_fifo: BoundedQueue::new(config.clean_capacity),
             clean_count: AtomicUsize::new(0),
             next_cache: AtomicU64::new(0),
         }
@@ -156,7 +152,7 @@ where
     }
 
     pub fn dirty_log_len(&self) -> usize {
-        self.dirty_log.lock().len()
+        lock(&self.dirty_log).len()
     }
 
     pub fn clean_store_len(&self) -> usize {
@@ -214,7 +210,7 @@ where
     }
 
     pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
-        let record = self.dirty_log.lock().append(key, value);
+        let record = lock(&self.dirty_log).append(key, value);
         let id = record.id;
         let visible_key = record.key.clone();
         let visible = VisibleValue::Dirty(record);
@@ -276,12 +272,12 @@ where
     }
 
     pub fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
-        self.dirty_log.lock().pending_batch(limit)
+        lock(&self.dirty_log).pending_batch(limit)
     }
 
     pub fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
         let flushed_records = batch.entries.iter().map(Arc::clone).collect::<Vec<_>>();
-        let mut dirty_log = self.dirty_log.lock();
+        let mut dirty_log = lock(&self.dirty_log);
         let marked = dirty_log.mark_flushed(batch);
         drop(dirty_log);
         if marked == 0 {
@@ -375,7 +371,7 @@ where
         });
         visible.sort_by(|left, right| left.0.cmp(&right.0));
 
-        let dirty_log = self.dirty_log.lock();
+        let dirty_log = lock(&self.dirty_log);
         let dirty_pending = dirty_log
             .entries
             .iter()
@@ -651,7 +647,7 @@ mod conformance_tests {
                 })
                 .collect::<BTreeMap<_, _>>();
             assert_eq!(cache_store, comparable.cache_store);
-            assert_eq!(snapshot.next_write, self.live.dirty_log.lock().next_id);
+            assert_eq!(snapshot.next_write, lock(&self.live.dirty_log).next_id);
             assert_eq!(to_core_id(snapshot.next_write), comparable.next_write);
             assert_eq!(to_core_id(snapshot.next_cache), comparable.next_cache);
             assert_eq!(snapshot.clean_count, cache_store.len());

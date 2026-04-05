@@ -1,153 +1,216 @@
 #![cfg(feature = "loom")]
 
-use loom::sync::{Arc, Mutex};
+use loom::sync::Arc;
 use loom::thread;
 
-#[derive(Debug)]
-struct DirtyRecord {
-    id: u64,
-}
+use cachelog_rs::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
 
-#[derive(Debug)]
-struct CleanRecord {
-    id: u64,
-}
-
-#[derive(Debug, Default)]
-struct DirtySlot {
-    current: Mutex<Option<Arc<DirtyRecord>>>,
-}
-
-impl DirtySlot {
-    fn new(record: Arc<DirtyRecord>) -> Self {
-        Self {
-            current: Mutex::new(Some(record)),
-        }
-    }
-
-    fn store(&self, record: Arc<DirtyRecord>) {
-        *self.current.lock().expect("dirty slot poisoned") = Some(record);
-    }
-
-    fn clear_if_matches(&self, expected: &Arc<DirtyRecord>) {
-        let mut guard = self.current.lock().expect("dirty slot poisoned");
-        if guard
-            .as_ref()
-            .is_some_and(|current| Arc::ptr_eq(current, expected))
-        {
-            *guard = None;
-        }
-    }
-
-    fn current_id(&self) -> Option<u64> {
-        self.current
-            .lock()
-            .expect("dirty slot poisoned")
-            .as_ref()
-            .map(|record| record.id)
-    }
-}
-
-#[derive(Debug, Default)]
-struct CleanSlot {
-    current: Mutex<Option<Arc<CleanRecord>>>,
-}
-
-impl CleanSlot {
-    fn new(record: Arc<CleanRecord>) -> Self {
-        Self {
-            current: Mutex::new(Some(record)),
-        }
-    }
-
-    fn store(&self, record: Arc<CleanRecord>) {
-        *self.current.lock().expect("clean slot poisoned") = Some(record);
-    }
-
-    fn clear_if_matches(&self, expected_id: u64) {
-        let mut guard = self.current.lock().expect("clean slot poisoned");
-        if guard
-            .as_ref()
-            .is_some_and(|current| current.id == expected_id)
-        {
-            *guard = None;
-        }
-    }
-
-    fn current_id(&self) -> Option<u64> {
-        self.current
-            .lock()
-            .expect("clean slot poisoned")
-            .as_ref()
-            .map(|record| record.id)
-    }
-}
+const STACK: usize = 4 * 1024 * 1024;
 
 #[test]
-fn newer_dirty_visible_survives_old_flush_cleanup() {
+fn newer_dirty_survives_flush_of_older() {
     loom::model(|| {
-        let old = Arc::new(DirtyRecord { id: 0 });
-        let new = Arc::new(DirtyRecord { id: 1 });
-        let slot = Arc::new(DirtySlot::new(old.clone()));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
-        let writer_slot = slot.clone();
-        let writer_new = new.clone();
-        let writer = thread::spawn(move || {
-            writer_slot.store(writer_new);
-        });
+        let m = map.clone();
+        let setup = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 10);
+                m.flush_batch(1)
+            })
+            .unwrap();
+        let batch = setup.join().unwrap();
 
-        let flusher_slot = slot.clone();
-        let flusher_old = old.clone();
-        let flusher = thread::spawn(move || {
-            flusher_slot.clear_if_matches(&flusher_old);
-        });
+        let m = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 20);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let b = batch.clone();
+        let flusher = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.mark_flushed(&b);
+            })
+            .unwrap();
 
         writer.join().unwrap();
         flusher.join().unwrap();
 
-        assert_eq!(slot.current_id(), Some(1));
+        let m = map.clone();
+        let checker = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                if let Some((val, state, _)) = m.read(&1, |_, v, s, r| (*v, s, r)) {
+                    assert_eq!(val, 20);
+                    assert_eq!(state, EntryState::Dirty);
+                }
+            })
+            .unwrap();
+        checker.join().unwrap();
     });
 }
 
 #[test]
-fn current_dirty_is_cleared_when_flush_matches_visible_record() {
+fn concurrent_read_and_write() {
     loom::model(|| {
-        let current = Arc::new(DirtyRecord { id: 0 });
-        let slot = Arc::new(DirtySlot::new(current.clone()));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
-        let flusher_slot = slot.clone();
-        let flusher_current = current.clone();
-        let flusher = thread::spawn(move || {
-            flusher_slot.clear_if_matches(&flusher_current);
-        });
+        let m = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 42);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let reader = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || m2.read(&1, |_, v, s, _| (*v, s)))
+            .unwrap();
+
+        writer.join().unwrap();
+        let result = reader.join().unwrap();
+
+        match result {
+            None => {}
+            Some((val, state)) => {
+                assert_eq!(val, 42);
+                assert_eq!(state, EntryState::Dirty);
+            }
+        }
+    });
+}
+
+#[test]
+fn dirty_write_replaces_clean() {
+    loom::model(|| {
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+
+        let m = map.clone();
+        let setup = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_clean_if_absent(1, 10);
+            })
+            .unwrap();
+        setup.join().unwrap();
+
+        let m = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 20);
+            })
+            .unwrap();
+
+        writer.join().unwrap();
+
+        let m = map.clone();
+        let checker = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                let result = m.read(&1, |_, v, s, _| (*v, s));
+                assert_eq!(result, Some((20, EntryState::Dirty)));
+            })
+            .unwrap();
+        checker.join().unwrap();
+    });
+}
+
+#[test]
+fn flush_does_not_clear_newer_dirty_ptr() {
+    loom::model(|| {
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+
+        let m = map.clone();
+        let setup = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 10);
+                let batch = m.flush_batch(1);
+                m.insert_dirty(1, 20);
+                batch
+            })
+            .unwrap();
+        let batch = setup.join().unwrap();
+
+        let m = map.clone();
+        let b = batch.clone();
+        let flusher = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.mark_flushed(&b);
+            })
+            .unwrap();
 
         flusher.join().unwrap();
 
-        assert_eq!(slot.current_id(), None);
+        let m = map.clone();
+        let checker = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                let result = m.read(&1, |_, v, s, r| (*v, s, r));
+                assert!(result.is_some());
+                let (val, state, vis) = result.unwrap();
+                assert_eq!(val, 20);
+                assert_eq!(state, EntryState::Dirty);
+                assert!(matches!(vis, VisibleRef::Dirty(1)));
+            })
+            .unwrap();
+        checker.join().unwrap();
     });
 }
 
 #[test]
-fn newer_clean_visible_survives_fifo_eviction_of_old_clean() {
+fn concurrent_clean_eviction() {
     loom::model(|| {
-        let old = Arc::new(CleanRecord { id: 0 });
-        let new = Arc::new(CleanRecord { id: 1 });
-        let slot = Arc::new(CleanSlot::new(old.clone()));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
-        let insert_slot = slot.clone();
-        let insert_new = new.clone();
-        let inserter = thread::spawn(move || {
-            insert_slot.store(insert_new);
-        });
+        let m = map.clone();
+        let setup = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_clean_if_absent(1, 10);
+            })
+            .unwrap();
+        setup.join().unwrap();
 
-        let evict_slot = slot.clone();
-        let evictor = thread::spawn(move || {
-            evict_slot.clear_if_matches(0);
-        });
+        let m = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 99);
+            })
+            .unwrap();
 
-        inserter.join().unwrap();
+        let m2 = map.clone();
+        let evictor = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.evict_clean(&1);
+            })
+            .unwrap();
+
+        writer.join().unwrap();
         evictor.join().unwrap();
 
-        assert_eq!(slot.current_id(), Some(1));
+        let m = map.clone();
+        let checker = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                if let Some((val, state)) = m.read(&1, |_, v, s, _| (*v, s)) {
+                    assert_eq!(val, 99);
+                    assert_eq!(state, EntryState::Dirty);
+                }
+            })
+            .unwrap();
+        checker.join().unwrap();
     });
 }

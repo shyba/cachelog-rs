@@ -8,7 +8,7 @@ name = "cachelog_rs"
 
 [features]
 default = []
-loom = []
+loom = ["scc/loom", "dep:loom"]
 
 [dev-dependencies]
 cachelog-core = { path = "cachelog-core", default-features = false, features = ["serde"] }
@@ -22,5 +22,6 @@ harness = false
 
 [dependencies]
 crossbeam-queue = "0.3"
+loom = { version = "0.7", optional = true }
 parking_lot = "0.12"
 scc = "3.6.12"

@@ -21,6 +21,7 @@
 //! looser semantic envelope: they allow split drop/cleanup actions to explore more interleavings
 //! than the live crate currently exposes.
 
+mod sync;
 mod entry;
 mod map;
 
