@@ -498,11 +498,20 @@ impl ModelState {
         if !self.dirty_refs_live(config) {
             report.failures.push("DirtyRefsLive");
         }
+        if !self.clean_refs_key_consistent(config) {
+            report.failures.push("CleanRefsKeyConsistent");
+        }
         if !strictly_increasing(&self.dirty_q) {
             report.failures.push("DirtyQOrdered");
         }
         if !strictly_increasing(&self.flushed) {
             report.failures.push("FlushedOrdered");
+        }
+        if !self.queued_after_flushed() {
+            report.failures.push("QueuedAfterFlushed");
+        }
+        if !self.all_ids_lt_next_write() {
+            report.failures.push("AllIdsLtNextWrite");
         }
         if !self.durable_matches_flushed(config) {
             report.failures.push("DurableMatchesFlushed");
@@ -601,11 +610,53 @@ impl ModelState {
                 if !config.valid_write(id)
                     || !self.write_store[id].present
                     || self.write_store[id].id != Some(id)
+                    || self.write_store[id].key != index
                 {
                     return false;
                 }
             }
             index += 1;
+        }
+        true
+    }
+
+    pub fn clean_refs_key_consistent(&self, config: ModelConfig) -> bool {
+        let mut index = 0;
+        while index < self.visible.len() {
+            if let VisibleRef::Clean(id) = self.visible[index] {
+                if config.valid_cache(id)
+                    && self.cache_store[id].present
+                    && self.cache_store[id].key != index
+                {
+                    return false;
+                }
+            }
+            index += 1;
+        }
+        true
+    }
+
+    pub fn queued_after_flushed(&self) -> bool {
+        for &f in &self.flushed {
+            for &q in &self.dirty_q {
+                if f >= q {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    pub fn all_ids_lt_next_write(&self) -> bool {
+        for &id in &self.dirty_q {
+            if id >= self.next_write {
+                return false;
+            }
+        }
+        for &id in &self.flushed {
+            if id >= self.next_write {
+                return false;
+            }
         }
         true
     }
@@ -1067,5 +1118,58 @@ mod tests {
         assert_eq!(state.visible, vec![VisibleRef::None, VisibleRef::None]);
         assert!(state.crashed);
         assert_invariants(&state, cfg);
+    }
+
+    #[test]
+    fn clean_refs_key_consistent_detects_mismatch() {
+        let cfg = ModelConfig::new(2, 2, 3, 2);
+        let mut state = ModelState::new(cfg);
+
+        state.writer_write(cfg, 0, 1).unwrap();
+        state.flusher_flush_next(cfg).unwrap();
+        state.flusher_drop(cfg, 0).unwrap();
+        state.cache_insert(cfg, 0).unwrap();
+        assert!(state.clean_refs_key_consistent(cfg));
+
+        state.cache_store[0].key = 1;
+        assert!(!state.clean_refs_key_consistent(cfg));
+    }
+
+    #[test]
+    fn dirty_refs_live_detects_key_mismatch() {
+        let cfg = ModelConfig::new(2, 2, 3, 2);
+        let mut state = ModelState::new(cfg);
+
+        state.writer_write(cfg, 0, 1).unwrap();
+        assert!(state.dirty_refs_live(cfg));
+
+        state.write_store[0].key = 1;
+        assert!(!state.dirty_refs_live(cfg));
+    }
+
+    #[test]
+    fn queued_after_flushed_detects_violation() {
+        let cfg = ModelConfig::new(2, 2, 4, 2);
+        let mut state = ModelState::new(cfg);
+
+        state.writer_write(cfg, 0, 0).unwrap();
+        state.writer_write(cfg, 1, 1).unwrap();
+        state.flusher_flush_next(cfg).unwrap();
+        assert!(state.queued_after_flushed());
+
+        state.dirty_q.insert(0, 0);
+        assert!(!state.queued_after_flushed());
+    }
+
+    #[test]
+    fn all_ids_lt_next_write_detects_violation() {
+        let cfg = ModelConfig::new(2, 2, 4, 2);
+        let mut state = ModelState::new(cfg);
+
+        state.writer_write(cfg, 0, 0).unwrap();
+        assert!(state.all_ids_lt_next_write());
+
+        state.dirty_q.push(99);
+        assert!(!state.all_ids_lt_next_write());
     }
 }

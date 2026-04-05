@@ -108,6 +108,141 @@ pub fn shape_ok(state: ModelState, cfg: ModelConfig) -> bool {
     }
 }
 
+#[logic(open)]
+pub fn dirty_refs_live(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        forall<k: Int> 0 <= k && k < cfg.key_count@ ==>
+            match state.visible[k] {
+                VisibleRef::Dirty(id) =>
+                    id < cfg.max_write &&
+                    state.write_store[id].present &&
+                    state.write_store[id].id == Some(id) &&
+                    state.write_store[id].key == k,
+                _ => true,
+            }
+    }
+}
+
+#[logic(open)]
+pub fn clean_refs_key_consistent(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        forall<k: Int> 0 <= k && k < cfg.key_count@ ==>
+            match state.visible[k] {
+                VisibleRef::Clean(id) =>
+                    (id < cfg.max_cache && state.cache_store[id].present) ==>
+                        state.cache_store[id].key == k,
+                _ => true,
+            }
+    }
+}
+
+#[logic(open)]
+pub fn dirty_q_ordered(state: ModelState) -> bool {
+    pearlite! {
+        forall<i: Int, j: Int>
+            0 <= i && i < j && j < state.dirty_q@.len() ==>
+                state.dirty_q[i] < state.dirty_q[j]
+    }
+}
+
+#[logic(open)]
+pub fn flushed_ordered(state: ModelState) -> bool {
+    pearlite! {
+        forall<i: Int, j: Int>
+            0 <= i && i < j && j < state.flushed@.len() ==>
+                state.flushed[i] < state.flushed[j]
+    }
+}
+
+#[logic(open)]
+pub fn queued_after_flushed(state: ModelState) -> bool {
+    pearlite! {
+        forall<i: Int, j: Int>
+            0 <= i && i < state.flushed@.len() &&
+            0 <= j && j < state.dirty_q@.len() ==>
+                state.flushed[i] < state.dirty_q[j]
+    }
+}
+
+#[logic(open)]
+pub fn all_ids_lt_next_write(state: ModelState) -> bool {
+    pearlite! {
+        (forall<i: Int> 0 <= i && i < state.dirty_q@.len() ==>
+            state.dirty_q[i] < state.next_write) &&
+        (forall<i: Int> 0 <= i && i < state.flushed@.len() ==>
+            state.flushed[i] < state.next_write)
+    }
+}
+
+#[logic(open)]
+pub fn no_lost_dirty(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        state.crashed ||
+        forall<id: Int> 0 <= id && id < cfg.max_write@ &&
+            state.created_dirty[id] ==>
+                (exists<i: Int> 0 <= i && i < state.dirty_q@.len() && state.dirty_q[i] == id) ||
+                (exists<i: Int> 0 <= i && i < state.flushed@.len() && state.flushed[i] == id) ||
+                (exists<k: Int> 0 <= k && k < cfg.key_count@ && state.visible[k] == VisibleRef::Dirty(id)) ||
+                state.write_store[id].present
+    }
+}
+
+#[logic(open)]
+pub fn no_bad_read(state: ModelState) -> bool {
+    pearlite! { !state.bad_read }
+}
+
+#[logic(open)]
+pub fn durable_matches_flushed(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        state.durable@.len() == cfg.key_count@ &&
+        forall<k: Int> 0 <= k && k < cfg.key_count@ ==>
+            state.durable[k] == apply_flushed_at(state.flushed, state.write_hist, k)
+    }
+}
+
+#[logic(open)]
+#[variant(flushed@.len())]
+pub fn apply_flushed_at(flushed: Vec<usize>, write_hist: Vec<DirtyRecord>, k: Int) -> DurableValue {
+    pearlite! {
+        if flushed@.len() == 0 {
+            DurableValue { present: false, value: 0, seq: None }
+        } else {
+            let last_idx = flushed@.len() - 1;
+            let id = flushed[last_idx];
+            let rest = flushed@.subsequence(0, last_idx);
+            if write_hist[id].present && write_hist[id].key == k {
+                DurableValue { present: true, value: write_hist[id].value, seq: Some(id) }
+            } else {
+                apply_flushed_at(rest.to_owned(), write_hist, k)
+            }
+        }
+    }
+}
+
+#[requires(valid_config(cfg))]
+#[requires(shape_ok(*state, cfg))]
+#[ensures(result == durable_matches_flushed(*state, cfg))]
+pub fn durable_replay_equivalence(state: &ModelState, cfg: ModelConfig) -> bool {
+    state.durable_matches_flushed(cfg)
+}
+
+#[logic(open)]
+pub fn inv(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        shape_ok(state, cfg) &&
+        dirty_refs_live(state, cfg) &&
+        clean_refs_key_consistent(state, cfg) &&
+        dirty_q_ordered(state) &&
+        flushed_ordered(state) &&
+        queued_after_flushed(state) &&
+        all_ids_lt_next_write(state) &&
+        no_lost_dirty(state, cfg) &&
+        no_bad_read(state) &&
+        durable_matches_flushed(state, cfg)
+    }
+}
+
 #[requires(valid_config(cfg))]
 #[ensures(result == shape_ok(*state, cfg))]
 pub fn type_ok_holds(state: &ModelState, cfg: ModelConfig) -> bool {
@@ -115,18 +250,20 @@ pub fn type_ok_holds(state: &ModelState, cfg: ModelConfig) -> bool {
 }
 
 #[requires(valid_config(cfg))]
+#[ensures(result == dirty_refs_live(*state, cfg))]
 pub fn dirty_refs_live_holds(state: &ModelState, cfg: ModelConfig) -> bool {
     state.dirty_refs_live(cfg)
 }
 
 #[requires(valid_config(cfg))]
+#[ensures(result == durable_matches_flushed(*state, cfg))]
 pub fn durable_matches_flushed_holds(state: &ModelState, cfg: ModelConfig) -> bool {
     state.durable_matches_flushed(cfg)
 }
 
 #[requires(valid_config(cfg))]
+#[ensures(result == no_lost_dirty(*state, cfg))]
 pub fn no_lost_dirty_holds(state: &ModelState, cfg: ModelConfig) -> bool {
-    let _ = cfg;
     state.no_lost_dirty()
 }
 
@@ -136,10 +273,10 @@ pub fn invariants_hold_holds(state: &ModelState, cfg: ModelConfig) -> bool {
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(key < cfg.key_count)]
 #[requires(value < cfg.value_count)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn writer_write_step(
     state: &mut ModelState,
     cfg: ModelConfig,
@@ -150,16 +287,16 @@ pub fn writer_write_step(
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
-#[ensures(shape_ok(^state, cfg))]
+#[requires(inv(*state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn flusher_flush_next_step(state: &mut ModelState, cfg: ModelConfig) -> Result<(), ModelError> {
     state.flusher_flush_next(cfg)
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(id < cfg.max_write)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn flusher_drop_step(
     state: &mut ModelState,
     cfg: ModelConfig,
@@ -169,9 +306,9 @@ pub fn flusher_drop_step(
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(key < cfg.key_count)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn cache_insert_step(
     state: &mut ModelState,
     cfg: ModelConfig,
@@ -181,9 +318,9 @@ pub fn cache_insert_step(
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(id < cfg.max_cache)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn cache_drop_record_step(
     state: &mut ModelState,
     cfg: ModelConfig,
@@ -193,9 +330,9 @@ pub fn cache_drop_record_step(
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(id < cfg.max_cache)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn cache_cleanup_visible_step(
     state: &mut ModelState,
     cfg: ModelConfig,
@@ -205,16 +342,22 @@ pub fn cache_cleanup_visible_step(
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
+#[requires(inv(*state, cfg))]
 #[requires(key < cfg.key_count)]
-#[ensures(shape_ok(^state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn reader_step(state: &mut ModelState, cfg: ModelConfig, key: KeyId) -> Result<(), ModelError> {
     state.reader_step(cfg, key)
 }
 
 #[requires(valid_config(cfg))]
-#[requires(shape_ok(*state, cfg))]
-#[ensures(shape_ok(^state, cfg))]
+#[requires(inv(*state, cfg))]
+#[ensures(inv(^state, cfg))]
 pub fn crash_step(state: &mut ModelState, cfg: ModelConfig) -> Result<(), ModelError> {
     state.crash(cfg)
+}
+
+#[requires(valid_config(cfg))]
+#[ensures(inv(result, cfg))]
+pub fn init_proof(cfg: ModelConfig) -> ModelState {
+    ModelState::new(cfg)
 }
