@@ -22,9 +22,7 @@
 //! than the live crate currently exposes.
 
 mod entry;
-mod equivalent;
 mod map;
 
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
-pub use equivalent::Equivalent;
 pub use map::{CacheLogConfig, CacheLogMap};
