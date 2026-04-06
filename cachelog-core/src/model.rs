@@ -196,6 +196,7 @@ pub struct InvariantReport {
 }
 
 impl InvariantReport {
+    #[cfg_attr(feature = "creusot", ensures(result == (self.failures@.len() == 0)))]
     pub fn is_ok(&self) -> bool {
         self.failures.len() == 0
     }
@@ -313,10 +314,10 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
     #[cfg_attr(feature = "creusot", requires(value < config.value_count))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn writer_write(
         &mut self,
         config: ModelConfig,
@@ -340,8 +341,8 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn flusher_flush_next(&mut self, config: ModelConfig) -> Result<(), ModelError> {
         if self.crashed {
             return Ok(());
@@ -359,9 +360,9 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(id < config.max_write))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn flusher_drop(&mut self, config: ModelConfig, id: WriteId) -> Result<(), ModelError> {
         self.check_write(config, id)?;
         if self.crashed {
@@ -379,9 +380,9 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn cache_insert(&mut self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {
         self.check_key(config, key)?;
         if self.crashed || self.next_cache >= config.max_cache {
@@ -397,9 +398,9 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(id < config.max_cache))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn cache_drop_record(
         &mut self,
         config: ModelConfig,
@@ -416,9 +417,9 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(id < config.max_cache))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn cache_cleanup_visible(
         &mut self,
         config: ModelConfig,
@@ -439,9 +440,9 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
     #[cfg_attr(feature = "creusot", requires(key < config.key_count))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn reader_step(&mut self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {
         self.check_key(config, key)?;
         if self.crashed {
@@ -466,8 +467,8 @@ impl ModelState {
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
-    #[cfg_attr(feature = "creusot", requires(crate::proofs::shape_ok(*self, config)))]
-    #[cfg_attr(feature = "creusot", ensures(crate::proofs::shape_ok(^self, config)))]
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::inv(*self, config)))]
+    #[cfg_attr(feature = "creusot", ensures(crate::proofs::inv(^self, config)))]
     pub fn crash(&mut self, config: ModelConfig) -> Result<(), ModelError> {
         if self.crashed {
             return Ok(());
@@ -489,6 +490,29 @@ impl ModelState {
         ComparableState::from(self)
     }
 
+    #[cfg(feature = "creusot")]
+    pub fn check_invariants(&self, config: ModelConfig) -> InvariantReport {
+        let ok = self.type_ok(config)
+            && self.dirty_refs_live(config)
+            && self.clean_refs_key_consistent(config)
+            && self.dirty_q_ordered()
+            && self.flushed_ordered()
+            && self.queued_after_flushed()
+            && self.all_ids_lt_next_write()
+            && self.durable_matches_flushed(config)
+            && self.no_lost_dirty(config)
+            && !self.bad_read;
+
+        if ok {
+            InvariantReport::default()
+        } else {
+            InvariantReport {
+                failures: vec!["InvariantFailure"],
+            }
+        }
+    }
+
+    #[cfg(not(feature = "creusot"))]
     pub fn check_invariants(&self, config: ModelConfig) -> InvariantReport {
         let mut report = InvariantReport::default();
 
@@ -501,10 +525,10 @@ impl ModelState {
         if !self.clean_refs_key_consistent(config) {
             report.failures.push("CleanRefsKeyConsistent");
         }
-        if !strictly_increasing(&self.dirty_q) {
+        if !self.dirty_q_ordered() {
             report.failures.push("DirtyQOrdered");
         }
-        if !strictly_increasing(&self.flushed) {
+        if !self.flushed_ordered() {
             report.failures.push("FlushedOrdered");
         }
         if !self.queued_after_flushed() {
@@ -516,7 +540,7 @@ impl ModelState {
         if !self.durable_matches_flushed(config) {
             report.failures.push("DurableMatchesFlushed");
         }
-        if !self.no_lost_dirty() {
+        if !self.no_lost_dirty(config) {
             report.failures.push("NoLostDirty");
         }
         if self.bad_read {
@@ -603,6 +627,8 @@ impl ModelState {
         true
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::dirty_refs_live(*self, config)))]
     pub fn dirty_refs_live(&self, config: ModelConfig) -> bool {
         let mut index = 0;
         while index < self.visible.len() {
@@ -620,6 +646,8 @@ impl ModelState {
         true
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::clean_refs_key_consistent(*self, config)))]
     pub fn clean_refs_key_consistent(&self, config: ModelConfig) -> bool {
         let mut index = 0;
         while index < self.visible.len() {
@@ -636,6 +664,7 @@ impl ModelState {
         true
     }
 
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::queued_after_flushed(*self)))]
     pub fn queued_after_flushed(&self) -> bool {
         for &f in &self.flushed {
             for &q in &self.dirty_q {
@@ -647,6 +676,7 @@ impl ModelState {
         true
     }
 
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::all_ids_lt_next_write(*self)))]
     pub fn all_ids_lt_next_write(&self) -> bool {
         for &id in &self.dirty_q {
             if id >= self.next_write {
@@ -661,11 +691,16 @@ impl ModelState {
         true
     }
 
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::durable_matches_flushed(*self, config)))]
     pub fn durable_matches_flushed(&self, config: ModelConfig) -> bool {
         self.durable == apply_flushed(config, &self.flushed, &self.write_hist)
     }
 
-    pub fn no_lost_dirty(&self) -> bool {
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::no_lost_dirty(*self, config)))]
+    pub fn no_lost_dirty(&self, config: ModelConfig) -> bool {
+        let _ = config;
         if self.crashed {
             return true;
         }
@@ -682,6 +717,16 @@ impl ModelState {
             id += 1;
         }
         true
+    }
+
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::dirty_q_ordered(*self)))]
+    pub fn dirty_q_ordered(&self) -> bool {
+        strictly_increasing(&self.dirty_q)
+    }
+
+    #[cfg_attr(feature = "creusot", ensures(result == crate::proofs::flushed_ordered(*self)))]
+    pub fn flushed_ordered(&self) -> bool {
+        strictly_increasing(&self.flushed)
     }
 
     fn check_key(&self, config: ModelConfig, key: KeyId) -> Result<(), ModelError> {

@@ -1,9 +1,0 @@
-{
-  "profile": [],
-  "proofs": {
-    "Coma": {
-      "vc_flusher_flush_next": { "prover": "alt-ergo", "time": 0.039 },
-      "vc_flusher_flush_next_step": { "prover": "alt-ergo", "time": 0.03 }
-    }
-  }
-}

@@ -7,21 +7,30 @@
 //! - dirty writes append to an ordered log and install a visible `Dirty` ref
 //! - clean cache entries install a visible `Clean` ref
 //! - reads consult only the visible index and resolve the underlying record
-//! - dirty refs are held strongly in the visible index until flusher-side conditional cleanup
+//! - dirty refs are held in the visible index until flusher-side conditional cleanup
 //!
 //! Flush ordering is derived from the dirty log rather than by scanning the visible index.
 //!
 //! Current implementation detail:
 //!
-//! - visible dirty entries hold the same `Arc<DirtyRecord>` as the dirty FIFO
+//! - visible dirty entries are stored directly in the visible map
+//! - dirty flush order is maintained by an explicit ordered FIFO dirty mode
 //! - `mark_flushed()` conditionally removes only the exact flushed visible record
 //! - clean eviction removes the visible clean entry immediately
+//! - `VisibleRef::Dirty` is the stable logical dirty write id stored in each dirty record
 //!
 //! The TLA+/PlusCal models under `models/` and `model-cachelog/` intentionally remain a slightly
 //! looser semantic envelope: they allow split drop/cleanup actions to explore more interleavings
 //! than the live crate currently exposes.
+//!
+//! Formal proof boundary:
+//!
+//! - `cachelog-core` proves the deterministic semantic state machine
+//! - `cachelog-rs` is validated against that model with conformance tests and loom scenarios
+//! - the live concurrent implementation is not deductively verified end to end
 
 mod sync;
+mod dirty_mode;
 mod entry;
 mod map;
 

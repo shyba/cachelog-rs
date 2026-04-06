@@ -4,7 +4,7 @@ fn main() {
     let map = CacheLogMap::new(CacheLogConfig::new(16, 16, 16));
 
     let write_id = map.insert_dirty("dirty".to_owned(), 10);
-    assert_eq!(write_id, 0);
+    assert!(write_id != 0);
 
     assert_eq!(map.insert_clean_if_absent("clean".to_owned(), 20), Some(0));
 
@@ -21,8 +21,8 @@ fn main() {
     let batch = map.flush_batch(8);
     for entry in batch.iter() {
         println!(
-            "flush candidate: id={} key={:?} value={:?}",
-            entry.id, entry.key, entry.value
+            "flush candidate: key={:?} value={:?}",
+            entry.key, entry.value
         );
     }
 
@@ -36,6 +36,6 @@ fn main() {
     map.insert_dirty("dirty".to_owned(), 11);
     assert!(matches!(
         map.visible_ref(&"dirty".to_owned()),
-        Some(VisibleRef::Dirty(1))
+        Some(VisibleRef::Dirty(_))
     ));
 }

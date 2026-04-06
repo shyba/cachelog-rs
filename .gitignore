@@ -1,2 +1,7 @@
 /target
 .codex-review-*
+/perf.data
+/perf.data.old
+/cachelog-core/target/
+/cachelog-core/.why3find/
+/cachelog-core/verif/

@@ -117,7 +117,7 @@ pub fn dirty_refs_live(state: ModelState, cfg: ModelConfig) -> bool {
                     id < cfg.max_write &&
                     state.write_store[id].present &&
                     state.write_store[id].id == Some(id) &&
-                    state.write_store[id].key == k,
+                    state.write_store[id].key@ == k,
                 _ => true,
             }
     }
@@ -129,8 +129,8 @@ pub fn clean_refs_key_consistent(state: ModelState, cfg: ModelConfig) -> bool {
         forall<k: Int> 0 <= k && k < cfg.key_count@ ==>
             match state.visible[k] {
                 VisibleRef::Clean(id) =>
-                    (id < cfg.max_cache && state.cache_store[id].present) ==>
-                        state.cache_store[id].key == k,
+                    id < cfg.max_cache && state.cache_store[id].present ==>
+                        state.cache_store[id].key@ == k,
                 _ => true,
             }
     }
@@ -180,9 +180,9 @@ pub fn no_lost_dirty(state: ModelState, cfg: ModelConfig) -> bool {
         state.crashed ||
         forall<id: Int> 0 <= id && id < cfg.max_write@ &&
             state.created_dirty[id] ==>
-                (exists<i: Int> 0 <= i && i < state.dirty_q@.len() && state.dirty_q[i] == id) ||
-                (exists<i: Int> 0 <= i && i < state.flushed@.len() && state.flushed[i] == id) ||
-                (exists<k: Int> 0 <= k && k < cfg.key_count@ && state.visible[k] == VisibleRef::Dirty(id)) ||
+                (exists<i: Int> 0 <= i && i < state.dirty_q@.len() && state.dirty_q[i]@ == id) ||
+                (exists<i: Int> 0 <= i && i < state.flushed@.len() && state.flushed[i]@ == id) ||
+                (exists<k: Int> 0 <= k && k < cfg.key_count@ && match state.visible[k] { VisibleRef::Dirty(d) => d@ == id, _ => false }) ||
                 state.write_store[id].present
     }
 }
@@ -197,24 +197,24 @@ pub fn durable_matches_flushed(state: ModelState, cfg: ModelConfig) -> bool {
     pearlite! {
         state.durable@.len() == cfg.key_count@ &&
         forall<k: Int> 0 <= k && k < cfg.key_count@ ==>
-            state.durable[k] == apply_flushed_at(state.flushed, state.write_hist, k)
+            state.durable[k] == apply_flushed_at(state.flushed@, state.write_hist@, k)
     }
 }
 
 #[logic(open)]
-#[variant(flushed@.len())]
-pub fn apply_flushed_at(flushed: Vec<usize>, write_hist: Vec<DirtyRecord>, k: Int) -> DurableValue {
+#[variant(flushed.len())]
+pub fn apply_flushed_at(flushed: Seq<usize>, write_hist: Seq<DirtyRecord>, k: Int) -> DurableValue {
     pearlite! {
-        if flushed@.len() == 0 {
-            DurableValue { present: false, value: 0, seq: None }
+        if flushed.len() == 0 {
+            DurableValue { present: false, value: 0usize, seq: None }
         } else {
-            let last_idx = flushed@.len() - 1;
+            let last_idx = flushed.len() - 1;
             let id = flushed[last_idx];
-            let rest = flushed@.subsequence(0, last_idx);
-            if write_hist[id].present && write_hist[id].key == k {
-                DurableValue { present: true, value: write_hist[id].value, seq: Some(id) }
+            let rest = flushed.subsequence(0, last_idx);
+            if write_hist[id@].present && write_hist[id@].key@ == k {
+                DurableValue { present: true, value: write_hist[id@].value, seq: Some(id) }
             } else {
-                apply_flushed_at(rest.to_owned(), write_hist, k)
+                apply_flushed_at(rest, write_hist, k)
             }
         }
     }
@@ -256,6 +256,32 @@ pub fn dirty_refs_live_holds(state: &ModelState, cfg: ModelConfig) -> bool {
 }
 
 #[requires(valid_config(cfg))]
+#[ensures(result == clean_refs_key_consistent(*state, cfg))]
+pub fn clean_refs_key_consistent_holds(state: &ModelState, cfg: ModelConfig) -> bool {
+    state.clean_refs_key_consistent(cfg)
+}
+
+#[ensures(result == dirty_q_ordered(*state))]
+pub fn dirty_q_ordered_holds(state: &ModelState) -> bool {
+    state.dirty_q_ordered()
+}
+
+#[ensures(result == flushed_ordered(*state))]
+pub fn flushed_ordered_holds(state: &ModelState) -> bool {
+    state.flushed_ordered()
+}
+
+#[ensures(result == queued_after_flushed(*state))]
+pub fn queued_after_flushed_holds(state: &ModelState) -> bool {
+    state.queued_after_flushed()
+}
+
+#[ensures(result == all_ids_lt_next_write(*state))]
+pub fn all_ids_lt_next_write_holds(state: &ModelState) -> bool {
+    state.all_ids_lt_next_write()
+}
+
+#[requires(valid_config(cfg))]
 #[ensures(result == durable_matches_flushed(*state, cfg))]
 pub fn durable_matches_flushed_holds(state: &ModelState, cfg: ModelConfig) -> bool {
     state.durable_matches_flushed(cfg)
@@ -264,12 +290,27 @@ pub fn durable_matches_flushed_holds(state: &ModelState, cfg: ModelConfig) -> bo
 #[requires(valid_config(cfg))]
 #[ensures(result == no_lost_dirty(*state, cfg))]
 pub fn no_lost_dirty_holds(state: &ModelState, cfg: ModelConfig) -> bool {
-    state.no_lost_dirty()
+    state.no_lost_dirty(cfg)
+}
+
+#[ensures(result == no_bad_read(*state))]
+pub fn no_bad_read_holds(state: &ModelState) -> bool {
+    !state.bad_read
 }
 
 #[requires(valid_config(cfg))]
+#[ensures(result == inv(*state, cfg))]
 pub fn invariants_hold_holds(state: &ModelState, cfg: ModelConfig) -> bool {
-    state.check_invariants(cfg).is_ok()
+    state.type_ok(cfg)
+        && state.dirty_refs_live(cfg)
+        && state.clean_refs_key_consistent(cfg)
+        && state.dirty_q_ordered()
+        && state.flushed_ordered()
+        && state.queued_after_flushed()
+        && state.all_ids_lt_next_write()
+        && state.durable_matches_flushed(cfg)
+        && state.no_lost_dirty(cfg)
+        && !state.bad_read
 }
 
 #[requires(valid_config(cfg))]

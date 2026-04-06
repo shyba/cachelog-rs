@@ -49,17 +49,31 @@ The flusher never blocks readers. Old dirty entries are removed only when the
 exact flushed record still matches the visible reference, so newer writes are
 never lost.
 
-## Formal verification
+## Verification boundary
 
-The core state machine has three layers of verification:
+This repository has a verified **semantic core**, not an end-to-end formal proof
+of the live concurrent crate.
 
-- **TLA+ model checking** — exhaustive state-space exploration of concurrent
-  writer, flusher, cache maintainer, reader, and crash interleavings
+- **TLA+ model checking** explores the abstract visible-map state machine and its
+  split writer/flusher/cache/reader/crash actions
   (`models/` and `model-cachelog/formal/`)
-- **Creusot proofs** — deductive verification of invariant preservation for
-  arbitrary input sizes (`cachelog-core/src/proofs.rs`)
-- **Conformance tests** — the live implementation runs in lockstep with the
-  model state machine, asserting structural equality after every operation
+- **Creusot proofs** verify invariant preservation for the deterministic core
+  state machine in [`cachelog-core`](/home/user/repos/tableflip-rs/cachelog-core)
+- **Conformance tests** compare the live crate against that core model on
+  deterministic operation sequences
+- **Loom tests** explore selected interleavings of the live concurrent
+  implementation
+
+What is **not** proved today:
+
+- the `scc`-based live implementation in [src/map.rs](/home/user/repos/tableflip-rs/src/map.rs)
+- linearizability of the live API against the abstract model
+- crash/recovery behavior of the live crate
+
+The live crate still is not end-to-end deductively verified, but it now shares
+the same stable logical dirty-id semantics as the abstract model: live
+`VisibleRef::Dirty` values correspond to logical dirty write ids rather than
+opaque record tokens.
 
 ## Building
 

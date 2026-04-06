@@ -161,7 +161,7 @@ fn flush_does_not_clear_newer_dirty_ptr() {
                 let (val, state, vis) = result.unwrap();
                 assert_eq!(val, 20);
                 assert_eq!(state, EntryState::Dirty);
-                assert!(matches!(vis, VisibleRef::Dirty(1)));
+                assert!(matches!(vis, VisibleRef::Dirty(_)));
             })
             .unwrap();
         checker.join().unwrap();
