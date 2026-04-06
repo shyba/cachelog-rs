@@ -255,49 +255,50 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "loom"))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct TestingRecord<K, V> {
-    id: u64,
-    key: K,
-    value: V,
+pub struct DebugRecord<K, V> {
+    pub id: u64,
+    pub key: K,
+    pub value: V,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "loom"))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum TestingVisible<K, V> {
-    Dirty(TestingRecord<K, V>),
-    Clean(TestingRecord<K, V>),
+pub enum DebugVisible<K, V> {
+    Dirty(DebugRecord<K, V>),
+    Clean(DebugRecord<K, V>),
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "loom"))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct TestingSnapshot<K, V> {
-    visible: Vec<(K, TestingVisible<K, V>)>,
-    dirty_pending: Vec<TestingRecord<K, V>>,
-    dirty_inflight: Vec<TestingRecord<K, V>>,
-    next_write: u64,
-    next_cache: u64,
-    clean_count: usize,
+pub struct DebugSnapshot<K, V> {
+    pub visible: Vec<(K, DebugVisible<K, V>)>,
+    pub dirty_pending: Vec<DebugRecord<K, V>>,
+    pub dirty_inflight: Vec<DebugRecord<K, V>>,
+    pub next_write: u64,
+    pub next_cache: u64,
+    pub clean_count: usize,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "loom"))]
 impl<K, V, H> CacheLogMap<K, V, H>
 where
     K: Clone + Eq + Hash + Ord,
     V: Clone,
     H: BuildHasher + Clone,
 {
-    fn testing_snapshot(&self) -> TestingSnapshot<K, V> {
+    #[doc(hidden)]
+    pub fn debug_snapshot(&self) -> DebugSnapshot<K, V> {
         let mut visible = Vec::new();
         self.visible.iter_sync(|key, value| {
             let projected = match value {
-                VisibleValue::Dirty(record) => TestingVisible::Dirty(TestingRecord {
+                VisibleValue::Dirty(record) => DebugVisible::Dirty(DebugRecord {
                     id: record.id,
                     key: record.key.clone(),
                     value: record.value.clone(),
                 }),
-                VisibleValue::Clean(record) => TestingVisible::Clean(TestingRecord {
+                VisibleValue::Clean(record) => DebugVisible::Clean(DebugRecord {
                     id: record.id,
                     key: record.key.clone(),
                     value: record.value.clone(),
@@ -312,7 +313,7 @@ where
             .dirty_mode
             .pending_records()
             .into_iter()
-            .map(|record| TestingRecord {
+            .map(|record| DebugRecord {
                 id: record.id,
                 key: record.key.clone(),
                 value: record.value.clone(),
@@ -322,14 +323,14 @@ where
             .dirty_mode
             .inflight_records()
             .into_iter()
-            .map(|record| TestingRecord {
+            .map(|record| DebugRecord {
                 id: record.id,
                 key: record.key.clone(),
                 value: record.value.clone(),
             })
             .collect();
 
-        TestingSnapshot {
+        DebugSnapshot {
             visible,
             dirty_pending,
             dirty_inflight,
@@ -499,7 +500,7 @@ mod conformance_tests {
         }
 
         fn assert_matches_model(&self) {
-            let snapshot = self.live.testing_snapshot();
+            let snapshot = self.live.debug_snapshot();
             let comparable = ComparableState::from(&self.model);
 
             let visible = snapshot
@@ -507,10 +508,10 @@ mod conformance_tests {
                 .iter()
                 .map(|(key, visible)| {
                     let visible = match visible {
-                        TestingVisible::Dirty(record) => {
+                        DebugVisible::Dirty(record) => {
                             ComparableVisibleRef::Dirty(to_core_id(record.id))
                         }
-                        TestingVisible::Clean(record) => {
+                        DebugVisible::Clean(record) => {
                             ComparableVisibleRef::Clean(to_core_id(record.id))
                         }
                     };
@@ -521,7 +522,7 @@ mod conformance_tests {
 
             let mut write_store = BTreeMap::new();
             for (_, visible) in &snapshot.visible {
-                if let TestingVisible::Dirty(record) = visible {
+                if let DebugVisible::Dirty(record) = visible {
                     write_store.insert(
                         to_core_id(record.id),
                         ComparableDirtyRecord {
@@ -568,7 +569,7 @@ mod conformance_tests {
                 .visible
                 .iter()
                 .filter_map(|(_, visible)| match visible {
-                    TestingVisible::Clean(record) => Some((
+                    DebugVisible::Clean(record) => Some((
                         to_core_id(record.id),
                         ComparableCleanRecord {
                             id: to_core_id(record.id),
@@ -576,7 +577,7 @@ mod conformance_tests {
                             value: record.value,
                         },
                     )),
-                    TestingVisible::Dirty(_) => None,
+                    DebugVisible::Dirty(_) => None,
                 })
                 .collect::<BTreeMap<_, _>>();
             assert_eq!(cache_store, comparable.cache_store);

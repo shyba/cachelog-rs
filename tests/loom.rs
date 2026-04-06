@@ -1,15 +1,16 @@
 #![cfg(feature = "loom")]
 
+mod loom_support;
+
 use loom::sync::Arc;
 use loom::thread;
 
 use cachelog_rs::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
-
-const STACK: usize = 4 * 1024 * 1024;
+use loom_support::{STACK, assert_public_consistency, assert_snapshot_legal, run_fast_model};
 
 #[test]
 fn newer_dirty_survives_flush_of_older() {
-    loom::model(|| {
+    run_fast_model(|| {
         let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
         let m = map.clone();
@@ -53,12 +54,13 @@ fn newer_dirty_survives_flush_of_older() {
             })
             .unwrap();
         checker.join().unwrap();
+        assert_snapshot_legal(&map.debug_snapshot());
     });
 }
 
 #[test]
 fn concurrent_read_and_write() {
-    loom::model(|| {
+    run_fast_model(|| {
         let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
         let m = map.clone();
@@ -85,12 +87,13 @@ fn concurrent_read_and_write() {
                 assert_eq!(state, EntryState::Dirty);
             }
         }
+        assert_snapshot_legal(&map.debug_snapshot());
     });
 }
 
 #[test]
 fn dirty_write_replaces_clean() {
-    loom::model(|| {
+    run_fast_model(|| {
         let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
         let m = map.clone();
@@ -121,12 +124,13 @@ fn dirty_write_replaces_clean() {
             })
             .unwrap();
         checker.join().unwrap();
+        assert_snapshot_legal(&map.debug_snapshot());
     });
 }
 
 #[test]
 fn flush_does_not_clear_newer_dirty_ptr() {
-    loom::model(|| {
+    run_fast_model(|| {
         let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
         let m = map.clone();
@@ -165,12 +169,13 @@ fn flush_does_not_clear_newer_dirty_ptr() {
             })
             .unwrap();
         checker.join().unwrap();
+        assert_snapshot_legal(&map.debug_snapshot());
     });
 }
 
 #[test]
 fn concurrent_clean_eviction() {
-    loom::model(|| {
+    run_fast_model(|| {
         let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
 
         let m = map.clone();
@@ -212,5 +217,69 @@ fn concurrent_clean_eviction() {
             })
             .unwrap();
         checker.join().unwrap();
+        assert_snapshot_legal(&map.debug_snapshot());
+    });
+}
+
+#[test]
+fn concurrent_writers_same_key_leave_a_valid_dirty_value() {
+    run_fast_model(|| {
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+
+        let m1 = map.clone();
+        let writer1 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m1.insert_dirty(1, 10);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let writer2 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.insert_dirty(1, 20);
+            })
+            .unwrap();
+
+        writer1.join().unwrap();
+        writer2.join().unwrap();
+
+        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        assert!(result.is_some());
+        let (val, state, vis) = result.unwrap();
+        assert!(matches!(val, 10 | 20));
+        assert_eq!(state, EntryState::Dirty);
+        assert!(matches!(vis, VisibleRef::Dirty(_)));
+        assert_snapshot_legal(&map.debug_snapshot());
+    });
+}
+
+#[test]
+fn public_api_is_consistent_after_write_race_joins() {
+    run_fast_model(|| {
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+
+        let m1 = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m1.insert_dirty(7, 70);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let reader = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                let _ = m2.read(&7, |_, value, state, visible| (*value, state, visible));
+            })
+            .unwrap();
+
+        writer.join().unwrap();
+        reader.join().unwrap();
+
+        assert_public_consistency(&map, 7);
+        assert_snapshot_legal(&map.debug_snapshot());
     });
 }

@@ -2,6 +2,7 @@
 name = "cachelog-rs"
 version = "0.1.0"
 edition = "2024"
+autobenches = false
 
 [lib]
 name = "cachelog_rs"

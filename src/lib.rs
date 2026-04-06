@@ -37,3 +37,5 @@ mod map;
 
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
 pub use map::{CacheLogConfig, CacheLogMap};
+#[cfg(feature = "loom")]
+pub use map::{DebugRecord, DebugSnapshot, DebugVisible};

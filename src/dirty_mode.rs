@@ -12,13 +12,13 @@ pub(crate) trait DirtyMode<K, V> {
     fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
     fn len(&self) -> usize;
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn pending_records(&self) -> Vec<Self::VisibleDirty>;
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn inflight_records(&self) -> Vec<Self::VisibleDirty>;
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn next_write(&self) -> WriteId;
 }
 
@@ -99,12 +99,12 @@ impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
         inner.entries.len() + inner.inflight.as_ref().map_or(0, FlushBatch::len)
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn pending_records(&self) -> Vec<Self::VisibleDirty> {
         lock(&self.inner).entries.iter().cloned().collect()
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn inflight_records(&self) -> Vec<Self::VisibleDirty> {
         lock(&self.inner)
             .inflight
@@ -113,7 +113,7 @@ impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
             .unwrap_or_default()
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "loom"))]
     fn next_write(&self) -> WriteId {
         lock(&self.inner).next_id
     }
