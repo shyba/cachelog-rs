@@ -19,9 +19,10 @@
 //! - clean eviction removes the visible clean entry immediately
 //! - `VisibleRef::Dirty` is the stable logical dirty write id stored in each dirty record
 //!
-//! The TLA+/PlusCal models under `models/` and `model-cachelog/` intentionally remain a slightly
-//! looser semantic envelope: they allow split drop/cleanup actions to explore more interleavings
-//! than the live crate currently exposes.
+//! The TLA+/PlusCal source models under `models/` intentionally remain a slightly looser semantic
+//! envelope: they allow split drop/cleanup actions to explore more interleavings than the live
+//! crate currently exposes. The active trace-validation spec consumed by `model-cachelog` lives
+//! separately under `model-cachelog/formal/`.
 //!
 //! Formal proof boundary:
 //!

@@ -55,8 +55,10 @@ This repository has a verified **semantic core**, not an end-to-end formal proof
 of the live concurrent crate.
 
 - **TLA+ model checking** explores the abstract visible-map state machine and its
-  split writer/flusher/cache/reader/crash actions
-  (`models/` and `model-cachelog/formal/`)
+  split writer/flusher/cache/reader/crash actions.
+  The human-maintained PlusCal/TLA+ source models live under `models/`, while
+  the active trace-validation spec used by `model-cachelog` lives under
+  `model-cachelog/formal/`
 - **Creusot proofs** verify invariant preservation for the deterministic core
   state machine in [`cachelog-core`](/home/user/repos/tableflip-rs/cachelog-core)
 - **Conformance tests** compare the live crate against that core model on
