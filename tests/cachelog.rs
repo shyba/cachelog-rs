@@ -181,6 +181,30 @@ fn insert_dirty_batch_keeps_last_duplicate_visible_but_flushes_all() {
 }
 
 #[test]
+fn insert_dirty_batch_without_ids_preserves_flush_order() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    map.insert_dirty_batch_without_ids(vec![
+        ("a".to_owned(), 1),
+        ("b".to_owned(), 2),
+        ("c".to_owned(), 3),
+    ]);
+    let batch = map.flush_batch(3);
+
+    assert_eq!(
+        batch.iter().map(|entry| entry.id).collect::<Vec<_>>(),
+        vec![0, 1, 2]
+    );
+    assert_eq!(
+        batch
+            .iter()
+            .map(|entry| entry.key.clone())
+            .collect::<Vec<_>>(),
+        vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]
+    );
+}
+
+#[test]
 fn mark_flushed_drops_flushed_prefix_immediately() {
     let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
 

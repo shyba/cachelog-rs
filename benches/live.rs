@@ -155,6 +155,32 @@ fn bench_dirty_batch_write(c: &mut Criterion) {
                 );
             },
         );
+
+        group.bench_with_input(
+            BenchmarkId::new("dirty_batch_write", format!("bulk_no_ids_{batch_size}")),
+            &batch_size,
+            |b, &batch_size| {
+                let writes =
+                    CacheLogMap::<u64, u64>::new(CacheLogConfig::new(1 << 20, 1 << 20, 16));
+                let mut base = 0_u64;
+                b.iter_batched(
+                    || {
+                        let start = base;
+                        base = base.wrapping_add(batch_size as u64);
+                        (0..batch_size)
+                            .map(|offset| {
+                                let key = start.wrapping_add(offset as u64);
+                                (key, key)
+                            })
+                            .collect::<Vec<_>>()
+                    },
+                    |entries| {
+                        writes.insert_dirty_batch_without_ids(entries);
+                    },
+                    BatchSize::SmallInput,
+                );
+            },
+        );
     }
 
     group.finish();
