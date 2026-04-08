@@ -1,4 +1,4 @@
-# cachelog-rs
+# cachelog
 
 A concurrent key-value map with a built-in write log and cache layer.
 
@@ -10,7 +10,7 @@ lookup interface.
 ## Quick start
 
 ```rust
-use cachelog_rs::{CacheLogConfig, CacheLogMap};
+use cachelog::{CacheLogConfig, CacheLogMap};
 
 // capacity: visible index, dirty log, clean cache
 let map = CacheLogMap::new(CacheLogConfig::new(1024, 1024, 1024));

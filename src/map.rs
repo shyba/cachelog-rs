@@ -175,29 +175,6 @@ where
         id
     }
 
-    pub fn insert_dirty_batch<I>(&self, entries: I) -> Vec<WriteId>
-    where
-        I: IntoIterator<Item = (K, V)>,
-    {
-        let records = self.dirty_mode.append_batch(entries);
-        let mut ids = Vec::with_capacity(records.len());
-        for record in records {
-            ids.push(record.id);
-            self.publish_dirty_record(record);
-        }
-        ids
-    }
-
-    pub fn insert_dirty_batch_without_ids<I>(&self, entries: I)
-    where
-        I: IntoIterator<Item = (K, V)>,
-    {
-        let records = self.dirty_mode.append_batch(entries);
-        for record in records {
-            self.publish_dirty_record(record);
-        }
-    }
-
     pub fn upsert_dirty(&self, key: K, value: V) -> WriteId {
         self.insert_dirty(key, value)
     }

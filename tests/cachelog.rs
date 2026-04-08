@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
-use cachelog_rs::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
+use cachelog::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
 
 fn read_triplet<K, Q, V>(map: &CacheLogMap<K, V>, key: &Q) -> Option<(V, EntryState, VisibleRef)>
 where
@@ -123,85 +123,6 @@ fn flush_batch_is_in_write_order() {
         .collect::<Vec<_>>();
     assert_eq!(ids.len(), 1);
     assert_eq!(keys, vec!["a".to_owned(), "b".to_owned()]);
-}
-
-#[test]
-fn insert_dirty_batch_returns_ids_in_input_order() {
-    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
-
-    let ids = map.insert_dirty_batch(vec![
-        ("a".to_owned(), 1),
-        ("b".to_owned(), 2),
-        ("c".to_owned(), 3),
-    ]);
-
-    assert_eq!(ids, vec![0, 1, 2]);
-}
-
-#[test]
-fn insert_dirty_batch_preserves_flush_order() {
-    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
-
-    let ids = map.insert_dirty_batch(vec![
-        ("a".to_owned(), 1),
-        ("b".to_owned(), 2),
-        ("c".to_owned(), 3),
-    ]);
-    let batch = map.flush_batch(3);
-
-    assert_eq!(batch.iter().map(|entry| entry.id).collect::<Vec<_>>(), ids);
-    assert_eq!(
-        batch
-            .iter()
-            .map(|entry| entry.key.clone())
-            .collect::<Vec<_>>(),
-        vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]
-    );
-}
-
-#[test]
-fn insert_dirty_batch_keeps_last_duplicate_visible_but_flushes_all() {
-    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
-
-    let ids = map.insert_dirty_batch(vec![("dup".to_owned(), 1), ("dup".to_owned(), 2)]);
-    let batch = map.flush_batch(2);
-
-    assert_eq!(ids, vec![0, 1]);
-    assert_eq!(
-        read_triplet(&map, "dup"),
-        Some((2, EntryState::Dirty, VisibleRef::Dirty(1)))
-    );
-    assert_eq!(
-        batch
-            .iter()
-            .map(|entry| (entry.id, entry.value))
-            .collect::<Vec<_>>(),
-        vec![(0, 1), (1, 2)]
-    );
-}
-
-#[test]
-fn insert_dirty_batch_without_ids_preserves_flush_order() {
-    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
-
-    map.insert_dirty_batch_without_ids(vec![
-        ("a".to_owned(), 1),
-        ("b".to_owned(), 2),
-        ("c".to_owned(), 3),
-    ]);
-    let batch = map.flush_batch(3);
-
-    assert_eq!(
-        batch.iter().map(|entry| entry.id).collect::<Vec<_>>(),
-        vec![0, 1, 2]
-    );
-    assert_eq!(
-        batch
-            .iter()
-            .map(|entry| entry.key.clone())
-            .collect::<Vec<_>>(),
-        vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]
-    );
 }
 
 #[test]

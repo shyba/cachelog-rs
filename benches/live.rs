@@ -1,8 +1,8 @@
 use std::hint::black_box;
 use std::time::Duration;
 
-use cachelog_rs::{CacheLogConfig, CacheLogMap};
-use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use cachelog::{CacheLogConfig, CacheLogMap};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
 fn bench_dirty_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("live");
@@ -97,95 +97,6 @@ fn bench_borrowed_lookup(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_dirty_batch_write(c: &mut Criterion) {
-    let mut group = c.benchmark_group("live");
-    group.measurement_time(Duration::from_secs(3));
-
-    for batch_size in [1_usize, 16, 64, 256] {
-        group.throughput(Throughput::Elements(batch_size as u64));
-
-        group.bench_with_input(
-            BenchmarkId::new("dirty_batch_write", format!("per_entry_{batch_size}")),
-            &batch_size,
-            |b, &batch_size| {
-                let writes =
-                    CacheLogMap::<u64, u64>::new(CacheLogConfig::new(1 << 20, 1 << 20, 16));
-                let mut base = 0_u64;
-                b.iter_batched(
-                    || {
-                        let start = base;
-                        base = base.wrapping_add(batch_size as u64);
-                        start
-                    },
-                    |start| {
-                        for offset in 0..batch_size {
-                            black_box(writes.insert_dirty(
-                                start.wrapping_add(offset as u64),
-                                start.wrapping_add(offset as u64),
-                            ));
-                        }
-                    },
-                    BatchSize::SmallInput,
-                );
-            },
-        );
-
-        group.bench_with_input(
-            BenchmarkId::new("dirty_batch_write", format!("bulk_{batch_size}")),
-            &batch_size,
-            |b, &batch_size| {
-                let writes =
-                    CacheLogMap::<u64, u64>::new(CacheLogConfig::new(1 << 20, 1 << 20, 16));
-                let mut base = 0_u64;
-                b.iter_batched(
-                    || {
-                        let start = base;
-                        base = base.wrapping_add(batch_size as u64);
-                        (0..batch_size)
-                            .map(|offset| {
-                                let key = start.wrapping_add(offset as u64);
-                                (key, key)
-                            })
-                            .collect::<Vec<_>>()
-                    },
-                    |entries| {
-                        black_box(writes.insert_dirty_batch(entries));
-                    },
-                    BatchSize::SmallInput,
-                );
-            },
-        );
-
-        group.bench_with_input(
-            BenchmarkId::new("dirty_batch_write", format!("bulk_no_ids_{batch_size}")),
-            &batch_size,
-            |b, &batch_size| {
-                let writes =
-                    CacheLogMap::<u64, u64>::new(CacheLogConfig::new(1 << 20, 1 << 20, 16));
-                let mut base = 0_u64;
-                b.iter_batched(
-                    || {
-                        let start = base;
-                        base = base.wrapping_add(batch_size as u64);
-                        (0..batch_size)
-                            .map(|offset| {
-                                let key = start.wrapping_add(offset as u64);
-                                (key, key)
-                            })
-                            .collect::<Vec<_>>()
-                    },
-                    |entries| {
-                        writes.insert_dirty_batch_without_ids(entries);
-                    },
-                    BatchSize::SmallInput,
-                );
-            },
-        );
-    }
-
-    group.finish();
-}
-
 fn bench_stale_cycle(c: &mut Criterion) {
     let mut group = c.benchmark_group("live");
     group.measurement_time(Duration::from_secs(3));
@@ -257,7 +168,6 @@ criterion_group!(
     bench_dirty_write,
     bench_dirty_read,
     bench_borrowed_lookup,
-    bench_dirty_batch_write,
     bench_stale_cycle,
     bench_stale_breakdown
 );

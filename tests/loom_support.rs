@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 
 use loom::model::Builder;
 
-use cachelog_rs::{CacheLogMap, DebugSnapshot, DebugVisible, EntryState, VisibleRef};
+use cachelog::{CacheLogMap, DebugSnapshot, DebugVisible, EntryState, VisibleRef};
 
 fn serializer() -> &'static Mutex<()> {
     static SERIALIZER: OnceLock<Mutex<()>> = OnceLock::new();

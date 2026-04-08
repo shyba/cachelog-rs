@@ -1,11 +1,15 @@
 [package]
-name = "cachelog-rs"
+name = "cachelog"
 version = "0.1.0"
 edition = "2024"
 autobenches = false
+license = "MIT"
+keywords = ["concurrent", "write-ahead-log", "key-value", "map"]
+description = "A concurrent fast key-value map with a built-in write log and cache layer."
+repository = "https://github.com/shyba/cachelog-rs"
 
 [lib]
-name = "cachelog_rs"
+name = "cachelog"
 
 [features]
 default = []

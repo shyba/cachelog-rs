@@ -1,4 +1,4 @@
-use cachelog_rs::{CacheLogConfig, CacheLogMap, VisibleRef};
+use cachelog::{CacheLogConfig, CacheLogMap, VisibleRef};
 
 fn main() {
     let map = CacheLogMap::new(CacheLogConfig::new(16, 16, 16));

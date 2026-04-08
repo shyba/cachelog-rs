@@ -8,9 +8,6 @@ pub(crate) trait DirtyMode<K, V> {
 
     fn new(capacity: usize) -> Self;
     fn append(&self, key: K, value: V) -> Self::VisibleDirty;
-    fn append_batch<I>(&self, entries: I) -> Vec<Self::VisibleDirty>
-    where
-        I: IntoIterator<Item = (K, V)>;
     fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
     fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
     fn len(&self) -> usize;
@@ -61,24 +58,6 @@ impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
         let record = Arc::new(DirtyRecord { id, key, value });
         inner.entries.push_back(record.clone());
         record
-    }
-
-    fn append_batch<I>(&self, entries: I) -> Vec<Self::VisibleDirty>
-    where
-        I: IntoIterator<Item = (K, V)>,
-    {
-        let mut inner = lock(&self.inner);
-        let iter = entries.into_iter();
-        let (lower, upper) = iter.size_hint();
-        let mut records = Vec::with_capacity(upper.unwrap_or(lower));
-        for (key, value) in iter {
-            let id = inner.next_id;
-            inner.next_id = inner.next_id.wrapping_add(1);
-            let record = Arc::new(DirtyRecord { id, key, value });
-            inner.entries.push_back(record.clone());
-            records.push(record);
-        }
-        records
     }
 
     fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {

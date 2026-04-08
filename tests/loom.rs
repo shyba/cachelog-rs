@@ -5,7 +5,7 @@ mod loom_support;
 use loom::sync::Arc;
 use loom::thread;
 
-use cachelog_rs::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
+use cachelog::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
 use loom_support::{STACK, assert_public_consistency, assert_snapshot_legal, run_fast_model};
 
 #[test]

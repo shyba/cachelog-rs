@@ -36,6 +36,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "cachelog"
+version = "0.1.0"
+dependencies = [
+ "cachelog-core",
+ "cachelog-model",
+ "criterion",
+ "crossbeam-queue",
+ "loom",
+ "parking_lot",
+ "scc",
+]
+
+[[package]]
 name = "cachelog-core"
 version = "0.1.0"
 dependencies = [
@@ -52,19 +65,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "cachelog-rs"
-version = "0.1.0"
-dependencies = [
- "cachelog-core",
- "cachelog-model",
- "criterion",
- "crossbeam-queue",
- "loom",
- "parking_lot",
- "scc",
 ]
 
 [[package]]
@@ -143,7 +143,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "creusot-std"
-version = "0.10.0"
+version = "0.11.0-dev"
 dependencies = [
  "creusot-std-proc",
  "num-rational",
@@ -151,9 +151,7 @@ dependencies = [
 
 [[package]]
 name = "creusot-std-proc"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a617b331f778b6e199b66057395f63b9d977573e4ca0856a33b8d169d0f0a640"
+version = "0.11.0-dev"
 dependencies = [
  "proc-macro2",
  "quote",
