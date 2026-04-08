@@ -108,7 +108,11 @@ pub fn assert_snapshot_legal(snapshot: &DebugSnapshot<usize, usize>) {
     );
 
     assert_strictly_increasing(
-        &snapshot.dirty_pending.iter().map(|record| record.id).collect::<Vec<_>>(),
+        &snapshot
+            .dirty_pending
+            .iter()
+            .map(|record| record.id)
+            .collect::<Vec<_>>(),
         "dirty_pending",
     );
     assert_strictly_increasing(

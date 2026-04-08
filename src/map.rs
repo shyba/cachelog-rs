@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
 
@@ -5,7 +6,9 @@ use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
 
 use crate::dirty_mode::{DirtyMode, OrderedFifoDirty};
-use crate::entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
+use crate::entry::{
+    CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId,
+};
 use crate::sync::{Arc, AtomicU64, AtomicUsize, BoundedQueue, Ordering};
 
 #[derive(Debug, Clone)]
@@ -101,16 +104,27 @@ where
         self.clean_count.load(Ordering::Relaxed)
     }
 
-    pub fn contains(&self, key: &K) -> bool {
+    pub fn contains<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         self.read(key, |_, _, _, _| ()).is_some()
     }
 
-    pub fn visible_ref(&self, key: &K) -> Option<VisibleRef> {
-        self.visible.read_sync(key, |_, visible| visible.visible_ref())
+    pub fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.visible
+            .read_sync(key, |_, visible| visible.visible_ref())
     }
 
-    pub fn get_cloned(&self, key: &K) -> Option<(V, EntryState, VisibleRef)>
+    pub fn get_cloned<Q>(&self, key: &Q) -> Option<(V, EntryState, VisibleRef)>
     where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
         V: Clone,
     {
         self.read(key, |_, value, state, visible| {
@@ -118,11 +132,15 @@ where
         })
     }
 
-    pub fn read<R>(
+    pub fn read<Q, R>(
         &self,
-        key: &K,
+        key: &Q,
         reader: impl FnOnce(&K, &V, EntryState, VisibleRef) -> R,
-    ) -> Option<R> {
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let mut reader = Some(reader);
         self.visible.read_sync(key, |_, visible| match visible {
             VisibleValue::Dirty(record) => {
@@ -153,20 +171,21 @@ where
     pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
         let record = self.dirty_mode.append(key, value);
         let id = record.id;
-        let visible_key = record.key.clone();
-        let visible = VisibleValue::Dirty(record);
-        match self.visible.entry_sync(visible_key) {
-            MapEntry::Occupied(mut occupied) => {
-                if matches!(occupied.get(), VisibleValue::Clean(_)) {
-                    self.clean_count.fetch_sub(1, Ordering::Relaxed);
-                }
-                let _ = occupied.insert(visible);
-            }
-            MapEntry::Vacant(vacant) => {
-                vacant.insert_entry(visible);
-            }
-        }
+        self.publish_dirty_record(record);
         id
+    }
+
+    pub fn insert_dirty_batch<I>(&self, entries: I) -> Vec<WriteId>
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let records = self.dirty_mode.append_batch(entries);
+        let mut ids = Vec::with_capacity(records.len());
+        for record in records {
+            ids.push(record.id);
+            self.publish_dirty_record(record);
+        }
+        ids
     }
 
     pub fn upsert_dirty(&self, key: K, value: V) -> WriteId {
@@ -193,7 +212,11 @@ where
         }
     }
 
-    pub fn evict_clean(&self, key: &K) -> bool {
+    pub fn evict_clean<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         self.visible
             .remove_if_sync(key, |visible| matches!(visible, VisibleValue::Clean(_)))
             .map(|_| {
@@ -203,7 +226,11 @@ where
             .unwrap_or(false)
     }
 
-    pub fn cleanup_stale_visible(&self, key: &K) -> bool {
+    pub fn cleanup_stale_visible<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         let Some(visible_ref) = self.visible_ref(key) else {
             return false;
         };
@@ -228,10 +255,30 @@ where
         marked
     }
 
-    fn cleanup_stale_visible_matching(&self, key: &K, expected: VisibleRef) -> bool {
+    fn cleanup_stale_visible_matching<Q>(&self, key: &Q, expected: VisibleRef) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
         self.visible
             .remove_if_sync(key, |visible| visible.visible_ref() == expected)
             .is_some()
+    }
+
+    fn publish_dirty_record(&self, record: Arc<DirtyRecord<K, V>>) {
+        let visible_key = record.key.clone();
+        let visible = VisibleValue::Dirty(record);
+        match self.visible.entry_sync(visible_key) {
+            MapEntry::Occupied(mut occupied) => {
+                if matches!(occupied.get(), VisibleValue::Clean(_)) {
+                    self.clean_count.fetch_sub(1, Ordering::Relaxed);
+                }
+                let _ = occupied.insert(visible);
+            }
+            MapEntry::Vacant(vacant) => {
+                vacant.insert_entry(visible);
+            }
+        }
     }
 
     fn enqueue_clean(&self, key: K, id: CacheId) {
@@ -429,10 +476,16 @@ mod conformance_tests {
 
         fn flush_batch(&mut self, limit: usize) -> Vec<usize> {
             let batch = self.live.flush_batch(limit);
-            let ids = batch.iter().map(|record| to_core_id(record.id)).collect::<Vec<_>>();
+            let ids = batch
+                .iter()
+                .map(|record| to_core_id(record.id))
+                .collect::<Vec<_>>();
             if self.inflight.is_empty() {
                 let model_queue = self.model.dirty_q.clone();
-                assert_eq!(ids, model_queue.iter().copied().take(limit).collect::<Vec<_>>());
+                assert_eq!(
+                    ids,
+                    model_queue.iter().copied().take(limit).collect::<Vec<_>>()
+                );
             } else {
                 assert_eq!(ids, self.inflight);
             }
@@ -443,7 +496,10 @@ mod conformance_tests {
 
         fn mark_flushed(&mut self, limit: usize) -> Vec<usize> {
             let batch = self.live.flush_batch(limit);
-            let ids = batch.iter().map(|record| to_core_id(record.id)).collect::<Vec<_>>();
+            let ids = batch
+                .iter()
+                .map(|record| to_core_id(record.id))
+                .collect::<Vec<_>>();
             assert_eq!(ids, self.inflight);
             let marked = self.live.mark_flushed(&batch);
             assert_eq!(marked, ids.len());
@@ -474,17 +530,28 @@ mod conformance_tests {
                     VisibleRef::Dirty(id) => ComparableVisibleRef::Dirty(to_core_id(id)),
                     VisibleRef::Clean(id) => ComparableVisibleRef::Clean(to_core_id(id)),
                 });
-                assert_eq!(actual_visible, expected_visible, "visible_ref mismatch for key {key}");
+                assert_eq!(
+                    actual_visible, expected_visible,
+                    "visible_ref mismatch for key {key}"
+                );
 
                 let expected_triplet = match self.model.visible[key] {
                     ModelVisibleRef::None => None,
                     ModelVisibleRef::Dirty(id) => {
                         let record = &self.model.write_store[id];
-                        Some((record.value, EntryState::Dirty, ComparableVisibleRef::Dirty(id)))
+                        Some((
+                            record.value,
+                            EntryState::Dirty,
+                            ComparableVisibleRef::Dirty(id),
+                        ))
                     }
                     ModelVisibleRef::Clean(id) => {
                         let record = &self.model.cache_store[id];
-                        Some((record.value, EntryState::Clean, ComparableVisibleRef::Clean(id)))
+                        Some((
+                            record.value,
+                            EntryState::Clean,
+                            ComparableVisibleRef::Clean(id),
+                        ))
                     }
                 };
                 let actual_triplet = self.live.read(&key, |_, value, state, visible| {
@@ -494,8 +561,15 @@ mod conformance_tests {
                     };
                     (*value, state, visible)
                 });
-                assert_eq!(actual_triplet, expected_triplet, "read mismatch for key {key}");
-                assert_eq!(self.live.contains(&key), expected_triplet.is_some(), "contains mismatch for key {key}");
+                assert_eq!(
+                    actual_triplet, expected_triplet,
+                    "read mismatch for key {key}"
+                );
+                assert_eq!(
+                    self.live.contains(&key),
+                    expected_triplet.is_some(),
+                    "contains mismatch for key {key}"
+                );
             }
         }
 

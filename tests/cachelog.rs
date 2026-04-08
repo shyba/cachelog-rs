@@ -1,12 +1,14 @@
+use std::borrow::Borrow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
 use cachelog_rs::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
 
-fn read_triplet<K, V>(map: &CacheLogMap<K, V>, key: &K) -> Option<(V, EntryState, VisibleRef)>
+fn read_triplet<K, Q, V>(map: &CacheLogMap<K, V>, key: &Q) -> Option<(V, EntryState, VisibleRef)>
 where
-    K: Clone + Eq + std::hash::Hash,
+    K: Borrow<Q> + Clone + Eq + std::hash::Hash,
+    Q: Eq + std::hash::Hash + ?Sized,
     V: Copy,
 {
     map.read(key, |_, value, state, visible| (*value, state, visible))
@@ -23,6 +25,61 @@ fn dirty_write_is_immediately_visible() {
         read_triplet(&map, &"alpha".to_owned()),
         Some((1, EntryState::Dirty, VisibleRef::Dirty(id)))
     );
+}
+
+#[test]
+fn borrowed_string_lookup_works_across_public_api() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+    let id = map.insert_dirty("borrowed".to_owned(), 9);
+
+    assert!(map.contains("borrowed"));
+    assert_eq!(map.visible_ref("borrowed"), Some(VisibleRef::Dirty(id)));
+    assert_eq!(
+        map.get_cloned("borrowed"),
+        Some((9, EntryState::Dirty, VisibleRef::Dirty(id)))
+    );
+    assert_eq!(
+        map.read("borrowed", |key, value, state, visible| {
+            (key.clone(), *value, state, visible)
+        }),
+        Some((
+            "borrowed".to_owned(),
+            9,
+            EntryState::Dirty,
+            VisibleRef::Dirty(id)
+        ))
+    );
+    assert!(map.cleanup_stale_visible("borrowed"));
+    assert!(!map.contains("borrowed"));
+}
+
+#[test]
+fn borrowed_bytes_lookup_works_across_public_api() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(16, 16, 16));
+    let id = map.insert_dirty(b"bytes".to_vec(), 11);
+
+    assert!(map.contains(b"bytes".as_slice()));
+    assert_eq!(
+        map.visible_ref(b"bytes".as_slice()),
+        Some(VisibleRef::Dirty(id))
+    );
+    assert_eq!(
+        map.get_cloned(b"bytes".as_slice()),
+        Some((11, EntryState::Dirty, VisibleRef::Dirty(id)))
+    );
+    assert_eq!(
+        map.read(b"bytes".as_slice(), |key, value, state, visible| {
+            (key.clone(), *value, state, visible)
+        }),
+        Some((
+            b"bytes".to_vec(),
+            11,
+            EntryState::Dirty,
+            VisibleRef::Dirty(id)
+        ))
+    );
+    assert!(map.cleanup_stale_visible(b"bytes".as_slice()));
+    assert!(!map.contains(b"bytes".as_slice()));
 }
 
 #[test]
@@ -66,6 +123,61 @@ fn flush_batch_is_in_write_order() {
         .collect::<Vec<_>>();
     assert_eq!(ids.len(), 1);
     assert_eq!(keys, vec!["a".to_owned(), "b".to_owned()]);
+}
+
+#[test]
+fn insert_dirty_batch_returns_ids_in_input_order() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    let ids = map.insert_dirty_batch(vec![
+        ("a".to_owned(), 1),
+        ("b".to_owned(), 2),
+        ("c".to_owned(), 3),
+    ]);
+
+    assert_eq!(ids, vec![0, 1, 2]);
+}
+
+#[test]
+fn insert_dirty_batch_preserves_flush_order() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    let ids = map.insert_dirty_batch(vec![
+        ("a".to_owned(), 1),
+        ("b".to_owned(), 2),
+        ("c".to_owned(), 3),
+    ]);
+    let batch = map.flush_batch(3);
+
+    assert_eq!(batch.iter().map(|entry| entry.id).collect::<Vec<_>>(), ids);
+    assert_eq!(
+        batch
+            .iter()
+            .map(|entry| entry.key.clone())
+            .collect::<Vec<_>>(),
+        vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]
+    );
+}
+
+#[test]
+fn insert_dirty_batch_keeps_last_duplicate_visible_but_flushes_all() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(16, 16, 16));
+
+    let ids = map.insert_dirty_batch(vec![("dup".to_owned(), 1), ("dup".to_owned(), 2)]);
+    let batch = map.flush_batch(2);
+
+    assert_eq!(ids, vec![0, 1]);
+    assert_eq!(
+        read_triplet(&map, "dup"),
+        Some((2, EntryState::Dirty, VisibleRef::Dirty(1)))
+    );
+    assert_eq!(
+        batch
+            .iter()
+            .map(|entry| (entry.id, entry.value))
+            .collect::<Vec<_>>(),
+        vec![(0, 1), (1, 2)]
+    );
 }
 
 #[test]

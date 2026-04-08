@@ -11,7 +11,9 @@ use loom_support::{STACK, assert_public_consistency, assert_snapshot_legal, run_
 #[test]
 fn newer_dirty_survives_flush_of_older() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m = map.clone();
         let setup = thread::Builder::new()
@@ -61,7 +63,9 @@ fn newer_dirty_survives_flush_of_older() {
 #[test]
 fn concurrent_read_and_write() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m = map.clone();
         let writer = thread::Builder::new()
@@ -94,7 +98,9 @@ fn concurrent_read_and_write() {
 #[test]
 fn dirty_write_replaces_clean() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m = map.clone();
         let setup = thread::Builder::new()
@@ -131,7 +137,9 @@ fn dirty_write_replaces_clean() {
 #[test]
 fn flush_does_not_clear_newer_dirty_ptr() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m = map.clone();
         let setup = thread::Builder::new()
@@ -176,7 +184,9 @@ fn flush_does_not_clear_newer_dirty_ptr() {
 #[test]
 fn concurrent_clean_eviction() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m = map.clone();
         let setup = thread::Builder::new()
@@ -224,7 +234,9 @@ fn concurrent_clean_eviction() {
 #[test]
 fn concurrent_writers_same_key_leave_a_valid_dirty_value() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m1 = map.clone();
         let writer1 = thread::Builder::new()
@@ -258,7 +270,9 @@ fn concurrent_writers_same_key_leave_a_valid_dirty_value() {
 #[test]
 fn public_api_is_consistent_after_write_race_joins() {
     run_fast_model(|| {
-        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(4, 4, 4)));
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(CacheLogConfig::new(
+            4, 4, 4,
+        )));
 
         let m1 = map.clone();
         let writer = thread::Builder::new()
