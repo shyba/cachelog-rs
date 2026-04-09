@@ -1,3 +1,5 @@
+#![cfg(not(feature = "loom"))]
+
 use std::borrow::Borrow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

@@ -375,7 +375,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "loom")))]
 mod conformance_tests {
     use std::collections::BTreeMap;
 

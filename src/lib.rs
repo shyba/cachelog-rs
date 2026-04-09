@@ -29,13 +29,26 @@
 //! - `cachelog-core` proves the deterministic semantic state machine
 //! - `cachelog-rs` is validated against that model with conformance tests and loom scenarios
 //! - the live concurrent implementation is not deductively verified end to end
+//!
+//! Experimental modes:
+//!
+//! - [`IdRingMap`] provides a `key -> latest_write_id` visible table backed by
+//!   [`MonotonicRing`] payload storage.
+//! - It is intended for read/write/flush experimentation and does not share the
+//!   same formal model as [`CacheLogMap`].
 
 mod dirty_mode;
 mod entry;
+mod id_ring_map;
 mod map;
+mod ring;
 mod sync;
 
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
 pub use map::{CacheLogConfig, CacheLogMap};
 #[cfg(feature = "loom")]
 pub use map::{DebugRecord, DebugSnapshot, DebugVisible};
+pub use id_ring_map::IdRingMap;
+pub use ring::{
+    Checked as CheckedRead, Direct as DirectRead, MonotonicRing, PAYLOAD_WORDS, Payload,
+};

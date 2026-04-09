@@ -25,6 +25,14 @@ loom = "0.7"
 name = "live"
 harness = false
 
+[[bench]]
+name = "monoring"
+harness = false
+
+[[bench]]
+name = "mode_compare"
+harness = false
+
 [dependencies]
 crossbeam-queue = "0.3"
 loom = { version = "0.7", optional = true }
