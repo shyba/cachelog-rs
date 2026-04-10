@@ -1,121 +1,264 @@
-use std::collections::VecDeque;
+#[cfg(feature = "loom")]
+mod imp {
+    use std::collections::VecDeque;
 
-use crate::entry::{DirtyRecord, FlushBatch};
-use crate::entry::WriteId;
-use crate::sync::{Arc, Mutex, lock, new_mutex};
+    use crate::entry::{DirtyRecord, FlushBatch, WriteId};
+    use crate::sync::{Arc, Mutex, lock, new_mutex};
 
-pub(crate) trait DirtyMode<K, V> {
-    type VisibleDirty: Clone;
+    pub(crate) trait DirtyMode<K, V> {
+        type VisibleDirty: Clone;
 
-    fn new(capacity: usize) -> Self;
-    fn append(&self, key: K, value: V) -> Self::VisibleDirty;
-    fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
-    fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
-    fn len(&self) -> usize;
+        fn new(capacity: usize) -> Self;
+        fn append(&self, key: K, value: V) -> Self::VisibleDirty;
+        fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
+        fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
+        fn len(&self) -> usize;
 
-    #[cfg(any(test, feature = "loom"))]
-    fn pending_records(&self) -> Vec<Self::VisibleDirty>;
+        #[cfg(any(test, feature = "loom"))]
+        fn pending_records(&self) -> Vec<Self::VisibleDirty>;
 
-    #[cfg(any(test, feature = "loom"))]
-    fn inflight_records(&self) -> Vec<Self::VisibleDirty>;
+        #[cfg(any(test, feature = "loom"))]
+        fn inflight_records(&self) -> Vec<Self::VisibleDirty>;
 
-    #[cfg(any(test, feature = "loom"))]
-    fn next_write(&self) -> WriteId;
-}
-
-struct DirtyLog<K, V> {
-    next_id: WriteId,
-    entries: VecDeque<Arc<DirtyRecord<K, V>>>,
-    inflight: Option<FlushBatch<K, V>>,
-}
-
-impl<K, V> DirtyLog<K, V> {
-    fn with_capacity(capacity: usize) -> Self {
-        Self {
-            next_id: 0,
-            entries: VecDeque::with_capacity(capacity.max(1)),
-            inflight: None,
-        }
+        #[cfg(any(test, feature = "loom"))]
+        fn next_write(&self) -> WriteId;
     }
-}
 
-pub(crate) struct OrderedFifoDirty<K, V> {
-    inner: Mutex<DirtyLog<K, V>>,
-}
+    struct DirtyLog<K, V> {
+        next_id: WriteId,
+        entries: VecDeque<Arc<DirtyRecord<K, V>>>,
+        inflight: Option<FlushBatch<K, V>>,
+    }
 
-impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
-    type VisibleDirty = Arc<DirtyRecord<K, V>>;
-
-    fn new(capacity: usize) -> Self {
-        Self {
-            inner: new_mutex(DirtyLog::with_capacity(capacity)),
+    impl<K, V> DirtyLog<K, V> {
+        fn with_capacity(capacity: usize) -> Self {
+            Self {
+                next_id: 0,
+                entries: VecDeque::with_capacity(capacity.max(1)),
+                inflight: None,
+            }
         }
     }
 
-    fn append(&self, key: K, value: V) -> Self::VisibleDirty {
-        let mut inner = lock(&self.inner);
-        let id = inner.next_id;
-        inner.next_id = inner.next_id.wrapping_add(1);
-        let record = Arc::new(DirtyRecord { id, key, value });
-        inner.entries.push_back(record.clone());
-        record
+    pub(crate) struct OrderedFifoDirty<K, V> {
+        inner: Mutex<DirtyLog<K, V>>,
     }
 
-    fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
-        let mut inner = lock(&self.inner);
-        if let Some(batch) = &inner.inflight {
-            return batch.clone();
+    impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
+        type VisibleDirty = Arc<DirtyRecord<K, V>>;
+
+        fn new(capacity: usize) -> Self {
+            Self {
+                inner: new_mutex(DirtyLog::with_capacity(capacity)),
+            }
         }
-        let mut entries = Vec::with_capacity(limit);
-        while entries.len() < limit {
-            let Some(record) = inner.entries.pop_front() else {
-                break;
+
+        fn append(&self, key: K, value: V) -> Self::VisibleDirty {
+            let mut inner = lock(&self.inner);
+            let id = inner.next_id;
+            inner.next_id = inner.next_id.wrapping_add(1);
+            let record = Arc::new(DirtyRecord { id, key, value });
+            inner.entries.push_back(record.clone());
+            record
+        }
+
+        fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+            let mut inner = lock(&self.inner);
+            if let Some(batch) = &inner.inflight {
+                return batch.clone();
+            }
+            let mut entries = Vec::with_capacity(limit);
+            while entries.len() < limit {
+                let Some(record) = inner.entries.pop_front() else {
+                    break;
+                };
+                entries.push(record);
+            }
+            let batch = FlushBatch::new(entries);
+            if !batch.is_empty() {
+                inner.inflight = Some(batch.clone());
+            }
+            batch
+        }
+
+        fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+            let mut inner = lock(&self.inner);
+            let Some(inflight) = &inner.inflight else {
+                return 0;
             };
-            entries.push(record);
+            if inflight.len() != batch.len() || inflight.last_id() != batch.last_id() {
+                return 0;
+            }
+            inner
+                .inflight
+                .take()
+                .expect("inflight batch vanished")
+                .len()
         }
-        let batch = FlushBatch::new(entries);
-        if !batch.is_empty() {
-            inner.inflight = Some(batch.clone());
+
+        fn len(&self) -> usize {
+            let inner = lock(&self.inner);
+            inner.entries.len() + inner.inflight.as_ref().map_or(0, FlushBatch::len)
         }
-        batch
-    }
 
-    fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
-        let mut inner = lock(&self.inner);
-        let Some(inflight) = &inner.inflight else {
-            return 0;
-        };
-        if inflight.len() != batch.len() || inflight.last_id() != batch.last_id() {
-            return 0;
+        #[cfg(any(test, feature = "loom"))]
+        fn pending_records(&self) -> Vec<Self::VisibleDirty> {
+            lock(&self.inner).entries.iter().cloned().collect()
         }
-        inner
-            .inflight
-            .take()
-            .expect("inflight batch vanished")
-            .len()
-    }
 
-    fn len(&self) -> usize {
-        let inner = lock(&self.inner);
-        inner.entries.len() + inner.inflight.as_ref().map_or(0, FlushBatch::len)
-    }
+        #[cfg(any(test, feature = "loom"))]
+        fn inflight_records(&self) -> Vec<Self::VisibleDirty> {
+            lock(&self.inner)
+                .inflight
+                .as_ref()
+                .map(|batch| batch.entries.to_vec())
+                .unwrap_or_default()
+        }
 
-    #[cfg(any(test, feature = "loom"))]
-    fn pending_records(&self) -> Vec<Self::VisibleDirty> {
-        lock(&self.inner).entries.iter().cloned().collect()
-    }
-
-    #[cfg(any(test, feature = "loom"))]
-    fn inflight_records(&self) -> Vec<Self::VisibleDirty> {
-        lock(&self.inner)
-            .inflight
-            .as_ref()
-            .map(|batch| batch.entries.to_vec())
-            .unwrap_or_default()
-    }
-
-    #[cfg(any(test, feature = "loom"))]
-    fn next_write(&self) -> WriteId {
-        lock(&self.inner).next_id
+        #[cfg(any(test, feature = "loom"))]
+        fn next_write(&self) -> WriteId {
+            lock(&self.inner).next_id
+        }
     }
 }
+
+#[cfg(not(feature = "loom"))]
+mod imp {
+    #[cfg(test)]
+    use std::collections::VecDeque;
+
+    use kanal::{Receiver, Sender};
+
+    use crate::entry::{DirtyRecord, FlushBatch};
+    #[cfg(any(test, feature = "loom"))]
+    use crate::entry::WriteId;
+    use crate::sync::{Arc, AtomicU64, AtomicUsize, Mutex, Ordering, lock, new_mutex};
+
+    pub(crate) trait DirtyMode<K, V> {
+        type VisibleDirty: Clone;
+
+        fn new(capacity: usize) -> Self;
+        fn append(&self, key: K, value: V) -> Self::VisibleDirty;
+        fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
+        fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
+        fn len(&self) -> usize;
+
+        #[cfg(any(test, feature = "loom"))]
+        fn pending_records(&self) -> Vec<Self::VisibleDirty>;
+
+        #[cfg(any(test, feature = "loom"))]
+        fn inflight_records(&self) -> Vec<Self::VisibleDirty>;
+
+        #[cfg(any(test, feature = "loom"))]
+        fn next_write(&self) -> WriteId;
+    }
+
+    pub(crate) struct OrderedFifoDirty<K, V> {
+        next_id: AtomicU64,
+        pending_len: AtomicUsize,
+        tx: Sender<Arc<DirtyRecord<K, V>>>,
+        rx: Receiver<Arc<DirtyRecord<K, V>>>,
+        inflight: Mutex<Option<FlushBatch<K, V>>>,
+        #[cfg(test)]
+        pending_shadow: Mutex<VecDeque<Arc<DirtyRecord<K, V>>>>,
+    }
+
+    impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
+        type VisibleDirty = Arc<DirtyRecord<K, V>>;
+
+        fn new(_capacity: usize) -> Self {
+            let (tx, rx) = kanal::unbounded();
+            Self {
+                next_id: AtomicU64::new(0),
+                pending_len: AtomicUsize::new(0),
+                tx,
+                rx,
+                inflight: new_mutex(None),
+                #[cfg(test)]
+                pending_shadow: new_mutex(VecDeque::new()),
+            }
+        }
+
+        fn append(&self, key: K, value: V) -> Self::VisibleDirty {
+            let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+            let record = Arc::new(DirtyRecord { id, key, value });
+            self.tx
+                .send(record.clone())
+                .expect("dirty queue receiver dropped");
+            self.pending_len.fetch_add(1, Ordering::Relaxed);
+            #[cfg(test)]
+            {
+                lock(&self.pending_shadow).push_back(record.clone());
+            }
+            record
+        }
+
+        fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+            let mut inflight = lock(&self.inflight);
+            if let Some(batch) = &*inflight {
+                return batch.clone();
+            }
+            let mut entries = Vec::with_capacity(limit);
+            while entries.len() < limit {
+                let Ok(Some(record)) = self.rx.try_recv() else {
+                    break;
+                };
+                self.pending_len.fetch_sub(1, Ordering::Relaxed);
+                #[cfg(test)]
+                {
+                    let _ = lock(&self.pending_shadow).pop_front();
+                }
+                entries.push(record);
+            }
+            let batch = FlushBatch::new(entries);
+            if !batch.is_empty() {
+                *inflight = Some(batch.clone());
+            }
+            batch
+        }
+
+        fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+            let mut inflight = lock(&self.inflight);
+            let Some(current) = &*inflight else {
+                return 0;
+            };
+            if current.len() != batch.len() || current.last_id() != batch.last_id() {
+                return 0;
+            }
+            inflight
+                .take()
+                .expect("inflight batch vanished")
+                .len()
+        }
+
+        fn len(&self) -> usize {
+            let inflight_len = lock(&self.inflight).as_ref().map_or(0, FlushBatch::len);
+            self.pending_len.load(Ordering::Relaxed) + inflight_len
+        }
+
+        #[cfg(any(test, feature = "loom"))]
+        fn pending_records(&self) -> Vec<Self::VisibleDirty> {
+            #[cfg(test)]
+            {
+                return lock(&self.pending_shadow).iter().cloned().collect();
+            }
+            #[allow(unreachable_code)]
+            Vec::new()
+        }
+
+        #[cfg(any(test, feature = "loom"))]
+        fn inflight_records(&self) -> Vec<Self::VisibleDirty> {
+            lock(&self.inflight)
+                .as_ref()
+                .map(|batch| batch.entries.to_vec())
+                .unwrap_or_default()
+        }
+
+        #[cfg(any(test, feature = "loom"))]
+        fn next_write(&self) -> WriteId {
+            self.next_id.load(Ordering::Relaxed)
+        }
+    }
+}
+
+pub(crate) use imp::{DirtyMode, OrderedFifoDirty};
