@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(not(creusot))]
 use thiserror::Error;
 
-#[cfg(creusot)]
-use creusot_std::model::DeepModel;
 #[cfg(feature = "creusot")]
 use creusot_std::macros::{ensures, requires};
+#[cfg(creusot)]
+use creusot_std::model::DeepModel;
 
 pub type KeyId = usize;
 pub type ValueId = usize;
@@ -19,7 +19,10 @@ pub type CacheId = usize;
 #[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
 #[cfg_attr(creusot, derive(DeepModel))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "kind", content = "id"))]
+#[cfg_attr(
+    all(feature = "serde", not(creusot)),
+    serde(tag = "kind", content = "id")
+)]
 pub enum VisibleRef {
     None,
     Dirty(WriteId),
@@ -149,7 +152,10 @@ pub struct ComparableDurableValue {
 #[cfg(not(creusot))]
 #[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
-#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "kind", content = "id"))]
+#[cfg_attr(
+    all(feature = "serde", not(creusot)),
+    serde(tag = "kind", content = "id")
+)]
 pub enum ComparableVisibleRef {
     Dirty(WriteId),
     Clean(CacheId),
@@ -176,7 +182,10 @@ pub struct ComparableState {
 #[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
 #[cfg_attr(creusot, derive(DeepModel))]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(all(feature = "serde", not(creusot)), serde(tag = "action", rename_all = "camelCase"))]
+#[cfg_attr(
+    all(feature = "serde", not(creusot)),
+    serde(tag = "action", rename_all = "camelCase")
+)]
 pub enum ModelStep {
     WriterWrite { key: KeyId, value: ValueId },
     FlusherFlushNext,

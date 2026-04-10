@@ -168,6 +168,105 @@ where
         })
     }
 
+    pub fn for_each_prefix(
+        &self,
+        prefix: &[u8],
+        mut reader: impl FnMut(&K, &V, EntryState, VisibleRef),
+        limit: usize,
+    ) -> usize
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return 0;
+        }
+        let mut matched = 0_usize;
+        self.visible.iter_sync(|_, visible| {
+            if matched >= limit {
+                return false;
+            }
+            match visible {
+                VisibleValue::Dirty(record) => {
+                    if record.key.borrow().starts_with(prefix) {
+                        reader(
+                            &record.key,
+                            &record.value,
+                            EntryState::Dirty,
+                            VisibleRef::Dirty(record.id),
+                        );
+                        matched += 1;
+                    }
+                }
+                VisibleValue::Clean(record) => {
+                    if record.key.borrow().starts_with(prefix) {
+                        reader(
+                            &record.key,
+                            &record.value,
+                            EntryState::Clean,
+                            VisibleRef::Clean(record.id),
+                        );
+                        matched += 1;
+                    }
+                }
+            }
+            matched < limit
+        });
+        matched
+    }
+
+    pub fn for_each_prefix_key(
+        &self,
+        prefix: &[u8],
+        mut reader: impl FnMut(&K),
+        limit: usize,
+    ) -> usize
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return 0;
+        }
+        let mut matched = 0_usize;
+        self.visible.iter_sync(|_, visible| {
+            if matched >= limit {
+                return false;
+            }
+            let key = match visible {
+                VisibleValue::Dirty(record) => &record.key,
+                VisibleValue::Clean(record) => &record.key,
+            };
+            if key.borrow().starts_with(prefix) {
+                reader(key);
+                matched += 1;
+            }
+            matched < limit
+        });
+        matched
+    }
+
+    pub fn list_prefix<R>(
+        &self,
+        prefix: &[u8],
+        mut reader: impl FnMut(&K, &V, EntryState, VisibleRef) -> R,
+        limit: usize,
+    ) -> Vec<R>
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return Vec::new();
+        }
+        let mut out = Vec::with_capacity(limit);
+        self.for_each_prefix(
+            prefix,
+            |key, value, state, visible| {
+                out.push(reader(key, value, state, visible));
+            },
+            limit,
+        );
+        out
+    }
+
     pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
         let record = self.dirty_mode.append(key, value);
         let id = record.id;
@@ -287,7 +386,6 @@ where
             }
         }
     }
-
 }
 
 #[cfg(any(test, feature = "loom"))]

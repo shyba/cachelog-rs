@@ -1,6 +1,7 @@
 #![cfg(not(feature = "loom"))]
 
 use std::borrow::Borrow;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
@@ -82,6 +83,102 @@ fn borrowed_bytes_lookup_works_across_public_api() {
     );
     assert!(map.cleanup_stale_visible(b"bytes".as_slice()));
     assert!(!map.contains(b"bytes".as_slice()));
+}
+
+#[test]
+fn list_prefix_scans_visible_entries_without_flush() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:1".to_vec(), 1);
+    map.insert_dirty(b"ab:2".to_vec(), 2);
+    map.insert_dirty(b"ac:1".to_vec(), 3);
+    assert_eq!(map.insert_clean_if_absent(b"ab:clean".to_vec(), 4), Some(0));
+
+    let rows = map.list_prefix(
+        b"ab:",
+        |key, value, state, visible| (key.clone(), *value, state, visible),
+        16,
+    );
+    assert_eq!(rows.len(), 3);
+
+    let keys = rows
+        .into_iter()
+        .map(|(k, _, _, _)| k)
+        .collect::<BTreeSet<_>>();
+    assert!(keys.contains(b"ab:1".as_slice()));
+    assert!(keys.contains(b"ab:2".as_slice()));
+    assert!(keys.contains(b"ab:clean".as_slice()));
+}
+
+#[test]
+fn list_prefix_respects_limit() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:1".to_vec(), 1);
+    map.insert_dirty(b"ab:2".to_vec(), 2);
+    map.insert_dirty(b"ab:3".to_vec(), 3);
+
+    let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 2);
+    assert_eq!(rows.len(), 2);
+}
+
+#[test]
+fn for_each_prefix_reports_match_count_without_allocating_results() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:1".to_vec(), 1);
+    map.insert_dirty(b"ab:2".to_vec(), 2);
+    map.insert_dirty(b"zz:1".to_vec(), 3);
+
+    let mut sum = 0_usize;
+    let matched = map.for_each_prefix(
+        b"ab:",
+        |_, value, state, _| {
+            assert_eq!(state, EntryState::Dirty);
+            sum += *value;
+        },
+        16,
+    );
+
+    assert_eq!(matched, 2);
+    assert_eq!(sum, 3);
+}
+
+#[test]
+fn for_each_prefix_respects_limit() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:1".to_vec(), 1);
+    map.insert_dirty(b"ab:2".to_vec(), 2);
+    map.insert_dirty(b"ab:3".to_vec(), 3);
+
+    let mut seen = 0_usize;
+    let matched = map.for_each_prefix(
+        b"ab:",
+        |_, _, _, _| {
+            seen += 1;
+        },
+        2,
+    );
+    assert_eq!(matched, 2);
+    assert_eq!(seen, 2);
+}
+
+#[test]
+fn for_each_prefix_key_returns_only_matching_keys() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:1".to_vec(), 1);
+    map.insert_dirty(b"ab:2".to_vec(), 2);
+    map.insert_dirty(b"zz:1".to_vec(), 3);
+
+    let mut keys = BTreeSet::new();
+    let matched = map.for_each_prefix_key(
+        b"ab:",
+        |k| {
+            keys.insert(k.clone());
+        },
+        16,
+    );
+    assert_eq!(matched, 2);
+    assert!(keys.contains(b"ab:1".as_slice()));
+    assert!(keys.contains(b"ab:2".as_slice()));
+    assert!(!keys.contains(b"zz:1".as_slice()));
 }
 
 #[test]

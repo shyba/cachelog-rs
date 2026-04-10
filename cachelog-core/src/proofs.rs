@@ -2,11 +2,11 @@
 
 use creusot_std::prelude::*;
 
+use crate::model::DirtyRecord;
 use crate::{
     CacheId, CleanRecord, DurableValue, KeyId, ModelConfig, ModelError, ModelState, ValueId,
     VisibleRef, WriteId,
 };
-use crate::model::DirtyRecord;
 
 #[logic(open)]
 pub fn valid_config(cfg: ModelConfig) -> bool {

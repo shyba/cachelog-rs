@@ -129,9 +129,9 @@ mod imp {
 
     use kanal::{Receiver, Sender};
 
-    use crate::entry::{DirtyRecord, FlushBatch};
     #[cfg(any(test, feature = "loom"))]
     use crate::entry::WriteId;
+    use crate::entry::{DirtyRecord, FlushBatch};
     use crate::sync::{Arc, AtomicU64, AtomicUsize, Mutex, Ordering, lock, new_mutex};
 
     pub(crate) trait DirtyMode<K, V> {
@@ -225,10 +225,7 @@ mod imp {
             if current.len() != batch.len() || current.last_id() != batch.last_id() {
                 return 0;
             }
-            inflight
-                .take()
-                .expect("inflight batch vanished")
-                .len()
+            inflight.take().expect("inflight batch vanished").len()
         }
 
         fn len(&self) -> usize {

@@ -178,27 +178,30 @@ fn bench_dirty_read_under_write(c: &mut Criterion) {
     )));
     map.insert_dirty(7, 77);
 
-    group.bench_function(BenchmarkId::new("dirty_read", "under_concurrent_write"), |b| {
-        let stop = Arc::new(AtomicBool::new(false));
-        let writer_map = Arc::clone(&map);
-        let writer_stop = Arc::clone(&stop);
-        let writer = thread::spawn(move || {
-            let mut i = 0_u64;
-            while !writer_stop.load(Ordering::Acquire) {
-                let key = i & ((1 << 16) - 1);
-                black_box(writer_map.insert_dirty(key, i));
-                i = i.wrapping_add(1);
-            }
-        });
+    group.bench_function(
+        BenchmarkId::new("dirty_read", "under_concurrent_write"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let key = i & ((1 << 16) - 1);
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
 
-        b.iter(|| {
-            let result = map.read(&7, |_, value, _, _| *value).unwrap();
-            black_box(result);
-        });
+            b.iter(|| {
+                let result = map.read(&7, |_, value, _, _| *value).unwrap();
+                black_box(result);
+            });
 
-        stop.store(true, Ordering::Release);
-        writer.join().unwrap();
-    });
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+        },
+    );
 
     group.finish();
 }
@@ -238,7 +241,7 @@ fn bench_mixed_rw(c: &mut Criterion) {
 
             let start = std::time::Instant::now();
             for i in 0..iters {
-                let v = i as u64;
+                let v = i;
                 let key = v & ((1 << 16) - 1);
                 black_box(map.insert_dirty(key, v));
             }
@@ -256,6 +259,217 @@ fn bench_mixed_rw(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_prefix_list(c: &mut Criterion) {
+    let mut group = c.benchmark_group("live");
+    group.measurement_time(Duration::from_secs(3));
+    group.throughput(Throughput::Elements(1));
+
+    let map = Arc::new(CacheLogMap::<Vec<u8>, u64>::new(CacheLogConfig::new(
+        1 << 15,
+        1 << 15,
+        1 << 15,
+    )));
+    for i in 0_u64..5_000 {
+        let key = if i % 5 == 0 {
+            format!("ab:{i:08}").into_bytes()
+        } else {
+            format!("zz:{i:08}").into_bytes()
+        };
+        map.insert_dirty(key, i);
+    }
+
+    group.bench_function(BenchmarkId::new("prefix_list", "serial_5k"), |b| {
+        b.iter(|| {
+            let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
+            black_box(rows.len());
+        });
+    });
+
+    group.bench_function(BenchmarkId::new("prefix_for_each", "serial_5k"), |b| {
+        b.iter(|| {
+            let mut sum = 0_u64;
+            let matched = map.for_each_prefix(
+                b"ab:",
+                |_, value, _, _| {
+                    sum ^= *value;
+                },
+                5_000,
+            );
+            black_box(sum);
+            black_box(matched);
+        });
+    });
+
+    group.bench_function(BenchmarkId::new("prefix_for_each_key", "serial_5k"), |b| {
+        b.iter(|| {
+            let mut sum = 0_usize;
+            let matched = map.for_each_prefix_key(
+                b"ab:",
+                |key| {
+                    sum ^= key.len();
+                },
+                5_000,
+            );
+            black_box(sum);
+            black_box(matched);
+        });
+    });
+
+    group.bench_function(
+        BenchmarkId::new("prefix_list", "under_concurrent_write_5k"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = i % 5_000;
+                    let key = if idx.is_multiple_of(5) {
+                        format!("ab:{idx:08}").into_bytes()
+                    } else {
+                        format!("zz:{idx:08}").into_bytes()
+                    };
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            b.iter(|| {
+                let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
+                black_box(rows.len());
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("prefix_for_each", "under_concurrent_write_5k"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = i % 5_000;
+                    let key = if idx.is_multiple_of(5) {
+                        format!("ab:{idx:08}").into_bytes()
+                    } else {
+                        format!("zz:{idx:08}").into_bytes()
+                    };
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            b.iter(|| {
+                let mut sum = 0_u64;
+                let matched = map.for_each_prefix(
+                    b"ab:",
+                    |_, value, _, _| {
+                        sum ^= *value;
+                    },
+                    5_000,
+                );
+                black_box(sum);
+                black_box(matched);
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("prefix_for_each_key", "under_concurrent_write_5k"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = i % 5_000;
+                    let key = if idx.is_multiple_of(5) {
+                        format!("ab:{idx:08}").into_bytes()
+                    } else {
+                        format!("zz:{idx:08}").into_bytes()
+                    };
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            b.iter(|| {
+                let mut sum = 0_usize;
+                let matched = map.for_each_prefix_key(
+                    b"ab:",
+                    |key| {
+                        sum ^= key.len();
+                    },
+                    5_000,
+                );
+                black_box(sum);
+                black_box(matched);
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("prefix_for_each", "under_concurrent_write_5k_pregen_keys"),
+        |b| {
+            let key_pool = Arc::new(
+                (0_u64..5_000)
+                    .map(|idx| {
+                        if idx % 5 == 0 {
+                            format!("ab:{idx:08}").into_bytes()
+                        } else {
+                            format!("zz:{idx:08}").into_bytes()
+                        }
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = (i % 5_000) as usize;
+                    let key = writer_keys[idx].clone();
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            b.iter(|| {
+                let mut sum = 0_u64;
+                let matched = map.for_each_prefix(
+                    b"ab:",
+                    |_, value, _, _| {
+                        sum ^= *value;
+                    },
+                    5_000,
+                );
+                black_box(sum);
+                black_box(matched);
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+        },
+    );
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_dirty_write,
@@ -263,6 +477,7 @@ criterion_group!(
     bench_borrowed_lookup,
     bench_dirty_read_under_write,
     bench_mixed_rw,
+    bench_prefix_list,
     bench_stale_cycle,
     bench_stale_breakdown
 );
