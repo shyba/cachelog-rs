@@ -112,7 +112,7 @@ impl State for ComparableState {
 
 impl ExtractState<ModelDriver> for ComparableState {
     fn from_driver(driver: &ModelDriver) -> Result<Self, DriverError> {
-        Ok(driver.state.comparable())
+        Ok(ComparableState::from(&driver.state))
     }
 }
 

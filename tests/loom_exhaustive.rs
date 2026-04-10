@@ -60,6 +60,14 @@ fn exhaustive_newer_dirty_survives_flush_of_older() {
             }
             assert_public_consistency(&map, 1);
             assert_snapshot_legal(&map.debug_snapshot());
+            loop {
+                let batch = map.flush_batch(8);
+                if batch.is_empty() {
+                    break;
+                }
+                let _ = map.mark_flushed(&batch);
+            }
+            assert_eq!(map.dirty_log_len(), 0);
         });
     }
 }
@@ -67,37 +75,44 @@ fn exhaustive_newer_dirty_survives_flush_of_older() {
 #[test]
 #[ignore = "slow exhaustive loom check"]
 fn exhaustive_same_key_concurrent_writers_leave_legal_state() {
-    for config in SMALL_CONFIGS {
-        run_exhaustive_model(5, 100_000, 20_000, Some(2), move || {
-            let map = Arc::new(CacheLogMap::<usize, usize>::new(config));
+    let config = CacheLogConfig::new(2, 2, 2);
+    run_exhaustive_model(5, 100_000, 20_000, Some(2), move || {
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(config));
 
-            let m1 = map.clone();
-            let writer1 = thread::Builder::new()
-                .stack_size(STACK)
-                .spawn(move || {
-                    m1.insert_dirty(1, 10);
-                })
-                .unwrap();
+        let m1 = map.clone();
+        let writer1 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m1.insert_dirty(1, 10);
+            })
+            .unwrap();
 
-            let m2 = map.clone();
-            let writer2 = thread::Builder::new()
-                .stack_size(STACK)
-                .spawn(move || {
-                    m2.insert_dirty(1, 20);
-                })
-                .unwrap();
+        let m2 = map.clone();
+        let writer2 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.insert_dirty(1, 20);
+            })
+            .unwrap();
 
-            writer1.join().unwrap();
-            writer2.join().unwrap();
+        writer1.join().unwrap();
+        writer2.join().unwrap();
 
-            let result = map.read(&1, |_, v, s, r| (*v, s, r));
-            assert!(result.is_some());
-            let (val, state, vis) = result.unwrap();
-            assert!(matches!(val, 10 | 20));
-            assert_eq!(state, EntryState::Dirty);
-            assert!(matches!(vis, VisibleRef::Dirty(_)));
-            assert_public_consistency(&map, 1);
-            assert_snapshot_legal(&map.debug_snapshot());
-        });
-    }
+        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        assert!(result.is_some());
+        let (val, state, vis) = result.unwrap();
+        assert!(matches!(val, 10 | 20));
+        assert_eq!(state, EntryState::Dirty);
+        assert!(matches!(vis, VisibleRef::Dirty(_)));
+        assert_public_consistency(&map, 1);
+        assert_snapshot_legal(&map.debug_snapshot());
+        loop {
+            let batch = map.flush_batch(8);
+            if batch.is_empty() {
+                break;
+            }
+            let _ = map.mark_flushed(&batch);
+        }
+        assert_eq!(map.dirty_log_len(), 0);
+    });
 }

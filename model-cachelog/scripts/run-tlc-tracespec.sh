@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "${script_dir}/../.." && pwd)"
+formal_dir="${repo_root}/model-cachelog/formal"
+
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
-cp model-cachelog/formal/CacheLogVisibleRefsTrace.tla "$tmpdir/"
+cp "${formal_dir}/CacheLogVisibleRefsTrace.tla" "$tmpdir/"
 
 cat > "$tmpdir/TraceData.tla" <<'EOF'
 ---- MODULE TraceData ----

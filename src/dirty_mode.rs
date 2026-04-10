@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
-use crate::entry::{DirtyRecord, FlushBatch, WriteId};
+use crate::entry::{DirtyRecord, FlushBatch};
+use crate::entry::WriteId;
 use crate::sync::{Arc, Mutex, lock, new_mutex};
 
 pub(crate) trait DirtyMode<K, V> {
@@ -32,7 +33,7 @@ impl<K, V> DirtyLog<K, V> {
     fn with_capacity(capacity: usize) -> Self {
         Self {
             next_id: 0,
-            entries: VecDeque::with_capacity(capacity),
+            entries: VecDeque::with_capacity(capacity.max(1)),
             inflight: None,
         }
     }
