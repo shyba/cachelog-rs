@@ -132,7 +132,7 @@ mod imp {
     #[cfg(any(test, feature = "loom"))]
     use crate::entry::WriteId;
     use crate::entry::{DirtyRecord, FlushBatch};
-    use crate::sync::{Arc, AtomicU64, AtomicUsize, Mutex, Ordering, lock, new_mutex};
+    use crate::sync::{Arc, AtomicU64, AtomicUsize, CachePadded, Mutex, Ordering, lock, new_mutex};
 
     pub(crate) trait DirtyMode<K, V> {
         type VisibleDirty: Clone;
@@ -154,8 +154,8 @@ mod imp {
     }
 
     pub(crate) struct OrderedFifoDirty<K, V> {
-        next_id: AtomicU64,
-        pending_len: AtomicUsize,
+        next_id: CachePadded<AtomicU64>,
+        pending_len: CachePadded<AtomicUsize>,
         tx: Sender<Arc<DirtyRecord<K, V>>>,
         rx: Receiver<Arc<DirtyRecord<K, V>>>,
         inflight: Mutex<Option<FlushBatch<K, V>>>,
@@ -169,8 +169,8 @@ mod imp {
         fn new(_capacity: usize) -> Self {
             let (tx, rx) = kanal::unbounded();
             Self {
-                next_id: AtomicU64::new(0),
-                pending_len: AtomicUsize::new(0),
+                next_id: CachePadded(AtomicU64::new(0)),
+                pending_len: CachePadded(AtomicUsize::new(0)),
                 tx,
                 rx,
                 inflight: new_mutex(None),
@@ -180,12 +180,12 @@ mod imp {
         }
 
         fn append(&self, key: K, value: V) -> Self::VisibleDirty {
-            let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+            let id = self.next_id.0.fetch_add(1, Ordering::Relaxed);
             let record = Arc::new(DirtyRecord { id, key, value });
             self.tx
                 .send(record.clone())
                 .expect("dirty queue receiver dropped");
-            self.pending_len.fetch_add(1, Ordering::Relaxed);
+            self.pending_len.0.fetch_add(1, Ordering::Relaxed);
             #[cfg(test)]
             {
                 lock(&self.pending_shadow).push_back(record.clone());
@@ -203,7 +203,7 @@ mod imp {
                 let Ok(Some(record)) = self.rx.try_recv() else {
                     break;
                 };
-                self.pending_len.fetch_sub(1, Ordering::Relaxed);
+                self.pending_len.0.fetch_sub(1, Ordering::Relaxed);
                 #[cfg(test)]
                 {
                     let _ = lock(&self.pending_shadow).pop_front();
@@ -230,7 +230,7 @@ mod imp {
 
         fn len(&self) -> usize {
             let inflight_len = lock(&self.inflight).as_ref().map_or(0, FlushBatch::len);
-            self.pending_len.load(Ordering::Relaxed) + inflight_len
+            self.pending_len.0.load(Ordering::Relaxed) + inflight_len
         }
 
         #[cfg(any(test, feature = "loom"))]
@@ -253,7 +253,7 @@ mod imp {
 
         #[cfg(any(test, feature = "loom"))]
         fn next_write(&self) -> WriteId {
-            self.next_id.load(Ordering::Relaxed)
+            self.next_id.0.load(Ordering::Relaxed)
         }
     }
 }

@@ -94,3 +94,6 @@ mod queue_impl {
 }
 
 pub(crate) use queue_impl::BoundedQueue;
+
+#[repr(align(64))]
+pub(crate) struct CachePadded<T>(pub T);
