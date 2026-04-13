@@ -30,11 +30,13 @@
 //! - `cachelog-rs` is validated against that model with conformance tests and loom scenarios
 //! - the live concurrent implementation is not deductively verified end to end
 //!
+mod byte_prefix_map;
 mod dirty_mode;
 mod entry;
 mod map;
 mod sync;
 
+pub use byte_prefix_map::BytePrefixMap;
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
 pub use map::{CacheLogConfig, CacheLogMap};
 #[cfg(feature = "loom")]

@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use cachelog::{CacheLogConfig, CacheLogMap};
+use cachelog::{BytePrefixMap, CacheLogConfig, CacheLogMap};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
 fn bench_dirty_write(c: &mut Criterion) {
@@ -166,6 +166,80 @@ fn bench_stale_breakdown(c: &mut Criterion) {
     group.finish();
 }
 
+fn build_prefix_key_pool() -> Arc<Vec<Vec<u8>>> {
+    Arc::new(
+        (0_u64..5_000)
+            .map(|i| {
+                if i % 5 == 0 {
+                    format!("ab:{i:08}").into_bytes()
+                } else {
+                    format!("zz:{i:08}").into_bytes()
+                }
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+fn bench_prefix_dirty_write(c: &mut Criterion) {
+    let mut group = c.benchmark_group("live");
+    group.measurement_time(Duration::from_secs(3));
+    group.throughput(Throughput::Elements(1));
+
+    let key_pool = build_prefix_key_pool();
+
+    group.bench_function(
+        BenchmarkId::new("prefix_dirty_write", "steady_state_5k_pool"),
+        |b| {
+            let map = Arc::new(BytePrefixMap::<u64>::new(CacheLogConfig::new(
+                1 << 15,
+                1 << 15,
+                1 << 15,
+            )));
+
+            let mut idx = 0_u64;
+            b.iter(|| {
+                let key = key_pool[(idx as usize) % key_pool.len()].clone();
+                let id = map.insert_dirty(key, idx);
+                black_box(id);
+                idx = idx.wrapping_add(1);
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("prefix_dirty_write", "under_concurrent_advance_5k_pool"),
+        |b| {
+            let map = Arc::new(BytePrefixMap::<u64>::new(CacheLogConfig::new(
+                1 << 15,
+                1 << 15,
+                1 << 15,
+            )));
+            let stop = Arc::new(AtomicBool::new(false));
+            let advancer_map = Arc::clone(&map);
+            let advancer_stop = Arc::clone(&stop);
+            let advancer = thread::spawn(move || {
+                while !advancer_stop.load(Ordering::Acquire) {
+                    let _ = advancer_map.advance_trie(256);
+                    std::hint::spin_loop();
+                }
+            });
+
+            let mut idx = 0_u64;
+            b.iter(|| {
+                let key = key_pool[(idx as usize) % key_pool.len()].clone();
+                let id = map.insert_dirty(key, idx);
+                black_box(id);
+                idx = idx.wrapping_add(1);
+            });
+
+            stop.store(true, Ordering::Release);
+            advancer.join().unwrap();
+        },
+    );
+
+    group.finish();
+}
+
 fn bench_dirty_read_under_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("live");
     group.measurement_time(Duration::from_secs(3));
@@ -264,18 +338,14 @@ fn bench_prefix_list(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(3));
     group.throughput(Throughput::Elements(1));
 
+    let key_pool = build_prefix_key_pool();
     let map = Arc::new(CacheLogMap::<Vec<u8>, u64>::new(CacheLogConfig::new(
         1 << 15,
         1 << 15,
         1 << 15,
     )));
-    for i in 0_u64..5_000 {
-        let key = if i % 5 == 0 {
-            format!("ab:{i:08}").into_bytes()
-        } else {
-            format!("zz:{i:08}").into_bytes()
-        };
-        map.insert_dirty(key, i);
+    for (i, key) in key_pool.iter().enumerate() {
+        map.insert_dirty(key.clone(), i as u64);
     }
 
     group.bench_function(BenchmarkId::new("prefix_list", "serial_5k"), |b| {
@@ -321,15 +391,12 @@ fn bench_prefix_list(c: &mut Criterion) {
             let stop = Arc::new(AtomicBool::new(false));
             let writer_map = Arc::clone(&map);
             let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
             let writer = thread::spawn(move || {
                 let mut i = 0_u64;
                 while !writer_stop.load(Ordering::Acquire) {
-                    let idx = i % 5_000;
-                    let key = if idx.is_multiple_of(5) {
-                        format!("ab:{idx:08}").into_bytes()
-                    } else {
-                        format!("zz:{idx:08}").into_bytes()
-                    };
+                    let idx = (i as usize) % writer_keys.len();
+                    let key = writer_keys[idx].clone();
                     black_box(writer_map.insert_dirty(key, i));
                     i = i.wrapping_add(1);
                 }
@@ -351,15 +418,12 @@ fn bench_prefix_list(c: &mut Criterion) {
             let stop = Arc::new(AtomicBool::new(false));
             let writer_map = Arc::clone(&map);
             let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
             let writer = thread::spawn(move || {
                 let mut i = 0_u64;
                 while !writer_stop.load(Ordering::Acquire) {
-                    let idx = i % 5_000;
-                    let key = if idx.is_multiple_of(5) {
-                        format!("ab:{idx:08}").into_bytes()
-                    } else {
-                        format!("zz:{idx:08}").into_bytes()
-                    };
+                    let idx = (i as usize) % writer_keys.len();
+                    let key = writer_keys[idx].clone();
                     black_box(writer_map.insert_dirty(key, i));
                     i = i.wrapping_add(1);
                 }
@@ -389,15 +453,12 @@ fn bench_prefix_list(c: &mut Criterion) {
             let stop = Arc::new(AtomicBool::new(false));
             let writer_map = Arc::clone(&map);
             let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
             let writer = thread::spawn(move || {
                 let mut i = 0_u64;
                 while !writer_stop.load(Ordering::Acquire) {
-                    let idx = i % 5_000;
-                    let key = if idx.is_multiple_of(5) {
-                        format!("ab:{idx:08}").into_bytes()
-                    } else {
-                        format!("zz:{idx:08}").into_bytes()
-                    };
+                    let idx = (i as usize) % writer_keys.len();
+                    let key = writer_keys[idx].clone();
                     black_box(writer_map.insert_dirty(key, i));
                     i = i.wrapping_add(1);
                 }
@@ -424,17 +485,6 @@ fn bench_prefix_list(c: &mut Criterion) {
     group.bench_function(
         BenchmarkId::new("prefix_for_each", "under_concurrent_write_5k_pregen_keys"),
         |b| {
-            let key_pool = Arc::new(
-                (0_u64..5_000)
-                    .map(|idx| {
-                        if idx % 5 == 0 {
-                            format!("ab:{idx:08}").into_bytes()
-                        } else {
-                            format!("zz:{idx:08}").into_bytes()
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            );
             let stop = Arc::new(AtomicBool::new(false));
             let writer_map = Arc::clone(&map);
             let writer_stop = Arc::clone(&stop);
@@ -442,7 +492,7 @@ fn bench_prefix_list(c: &mut Criterion) {
             let writer = thread::spawn(move || {
                 let mut i = 0_u64;
                 while !writer_stop.load(Ordering::Acquire) {
-                    let idx = (i % 5_000) as usize;
+                    let idx = (i as usize) % writer_keys.len();
                     let key = writer_keys[idx].clone();
                     black_box(writer_map.insert_dirty(key, i));
                     i = i.wrapping_add(1);
@@ -470,14 +520,127 @@ fn bench_prefix_list(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_prefix_list_with_advance(c: &mut Criterion) {
+    let mut group = c.benchmark_group("live");
+    group.measurement_time(Duration::from_secs(3));
+    group.throughput(Throughput::Elements(1));
+
+    let key_pool = build_prefix_key_pool();
+    let map = Arc::new(BytePrefixMap::<u64>::new(CacheLogConfig::new(
+        1 << 15,
+        1 << 15,
+        1 << 15,
+    )));
+    for (i, key) in key_pool.iter().enumerate() {
+        map.insert_dirty(key.clone(), i as u64);
+    }
+    let _ = map.advance_trie(usize::MAX);
+
+    group.bench_function(BenchmarkId::new("prefix_list_indexed", "serial_5k"), |b| {
+        b.iter(|| {
+            let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
+            black_box(rows.len());
+        });
+    });
+
+    group.bench_function(
+        BenchmarkId::new("prefix_list_indexed", "under_concurrent_write_5k"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = (i as usize) % writer_keys.len();
+                    let key = writer_keys[idx].clone();
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            let advance_map = Arc::clone(&map);
+            let advance_stop = Arc::clone(&stop);
+            let advancer = thread::spawn(move || {
+                while !advance_stop.load(Ordering::Acquire) {
+                    let _ = advance_map.advance_trie(256);
+                    std::hint::spin_loop();
+                }
+            });
+
+            b.iter(|| {
+                let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
+                black_box(rows.len());
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+            advancer.join().unwrap();
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("prefix_list_indexed", "mixed_with_point_reads_5k"),
+        |b| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let writer_map = Arc::clone(&map);
+            let writer_stop = Arc::clone(&stop);
+            let writer_keys = Arc::clone(&key_pool);
+            let writer = thread::spawn(move || {
+                let mut i = 0_u64;
+                while !writer_stop.load(Ordering::Acquire) {
+                    let idx = (i as usize) % writer_keys.len();
+                    let key = writer_keys[idx].clone();
+                    black_box(writer_map.insert_dirty(key, i));
+                    i = i.wrapping_add(1);
+                }
+            });
+
+            let advance_map = Arc::clone(&map);
+            let advance_stop = Arc::clone(&stop);
+            let advancer = thread::spawn(move || {
+                while !advance_stop.load(Ordering::Acquire) {
+                    let _ = advance_map.advance_trie(256);
+                    std::hint::spin_loop();
+                }
+            });
+
+            let read_map = Arc::clone(&map);
+            let read_stop = Arc::clone(&stop);
+            let reader = thread::spawn(move || {
+                while !read_stop.load(Ordering::Acquire) {
+                    black_box(read_map.read(b"ab:00000000", |_, value, _, _| *value));
+                }
+            });
+
+            b.iter(|| {
+                let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
+                black_box(rows.len());
+                let read = map.read(b"ab:00000000", |_, value, _, _| *value);
+                black_box(read);
+            });
+
+            stop.store(true, Ordering::Release);
+            writer.join().unwrap();
+            advancer.join().unwrap();
+            reader.join().unwrap();
+        },
+    );
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
+    bench_prefix_dirty_write,
     bench_dirty_write,
     bench_dirty_read,
     bench_borrowed_lookup,
     bench_dirty_read_under_write,
     bench_mixed_rw,
     bench_prefix_list,
+    bench_prefix_list_with_advance,
     bench_stale_cycle,
     bench_stale_breakdown
 );

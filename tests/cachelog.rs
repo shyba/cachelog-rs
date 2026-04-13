@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
-use cachelog::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
+use cachelog::{BytePrefixMap, CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
 
 fn read_triplet<K, Q, V>(map: &CacheLogMap<K, V>, key: &Q) -> Option<(V, EntryState, VisibleRef)>
 where
@@ -367,4 +367,76 @@ fn concurrent_readers_and_writer_smoke() {
             Some((value, EntryState::Dirty, VisibleRef::Dirty(_))) if value == key * 10
         ));
     }
+}
+
+#[test]
+fn byte_prefix_map_requires_advance_trie_to_surface_prefixes() {
+    let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:001".to_vec(), 1);
+    map.insert_dirty(b"ab:002".to_vec(), 2);
+    map.insert_dirty(b"zz:001".to_vec(), 3);
+
+    let before = map.list_prefix(b"ab:", |_, value, _, _| *value, 10);
+    assert!(before.is_empty());
+
+    let applied = map.advance_trie(64);
+    assert!(applied >= 2);
+
+    let mut rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 10);
+    rows.sort_unstable();
+    assert_eq!(rows, vec![1, 2]);
+}
+
+#[test]
+fn byte_prefix_map_for_each_prefix_key_filters_stale_keys() {
+    let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:001".to_vec(), 1);
+    map.insert_dirty(b"ab:002".to_vec(), 2);
+    let _ = map.advance_trie(64);
+
+    let batch = map.flush_batch(2);
+    assert_eq!(map.mark_flushed(&batch), 2);
+
+    let mut keys = Vec::new();
+    let matched = map.for_each_prefix_key(
+        b"ab:",
+        |k| keys.push(String::from_utf8_lossy(k).into_owned()),
+        10,
+    );
+    assert_eq!(matched, 0);
+    assert!(keys.is_empty());
+}
+
+#[test]
+fn byte_prefix_map_advance_trie_dedupes_batched_updates() {
+    let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:001".to_vec(), 1);
+    map.insert_dirty(b"ab:001".to_vec(), 2);
+    map.insert_dirty(b"ab:002".to_vec(), 3);
+
+    let applied = map.advance_trie(64);
+    assert_eq!(applied, 2);
+
+    let mut rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 10);
+    rows.sort_unstable();
+    assert_eq!(rows, vec![2, 3]);
+}
+
+#[test]
+fn byte_prefix_map_mark_flushed_keeps_rewritten_key_in_trie() {
+    let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+
+    map.insert_dirty(b"ab:001".to_vec(), 1);
+    let _ = map.advance_trie(64);
+    let first = map.flush_batch(1);
+    assert_eq!(first.len(), 1);
+
+    map.insert_dirty(b"ab:001".to_vec(), 2);
+    let _ = map.advance_trie(64);
+
+    assert_eq!(map.mark_flushed(&first), 1);
+    assert_eq!(
+        map.list_prefix(b"ab:", |_, value, _, _| *value, 10),
+        vec![2]
+    );
 }

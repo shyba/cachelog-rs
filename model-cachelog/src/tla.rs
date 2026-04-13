@@ -13,7 +13,7 @@ use tla_connect::{
 
 use crate::{
     CacheId, ComparableCleanRecord, ComparableDirtyRecord, ComparableDurableValue, ComparableState,
-    ComparableVisibleRef, ModelConfig, ModelState, ModelStep, WriteId,
+    ComparableVisibleRef, ModelConfig, ModelState, ModelStep, VisibleRef, WriteId,
 };
 
 pub struct ModelDriver {
@@ -30,8 +30,9 @@ impl ModelDriver {
     }
 
     pub fn emit_state(&self, emitter: &mut StateEmitter, action: &str) -> Result<(), DriverError> {
+        let state = TraceState::from(&self.state);
         emitter
-            .emit(action, &TraceState { state: &self.state })
+            .emit(action, &state)
             .map_err(|e| DriverError::StateExtraction(e.to_string()))
     }
 
@@ -312,9 +313,129 @@ fn missing(field: &str) -> impl FnOnce() -> DriverError + '_ {
 }
 
 #[derive(Serialize)]
-pub struct TraceState<'a> {
-    #[serde(flatten)]
-    pub state: &'a ModelState,
+struct TraceState {
+    visible: Vec<TraceVisibleRef>,
+    write_store: Vec<TraceDirtyRecord>,
+    write_hist: Vec<TraceDirtyRecord>,
+    dirty_q: Vec<WriteId>,
+    cache_store: Vec<TraceCleanRecord>,
+    durable: Vec<TraceDurableValue>,
+    flushed: Vec<WriteId>,
+    created_dirty: Vec<bool>,
+    next_write: usize,
+    next_cache: usize,
+    crashed: bool,
+    bad_read: bool,
+}
+
+#[derive(Serialize)]
+struct TraceVisibleRef {
+    kind: &'static str,
+    id: i64,
+}
+
+#[derive(Serialize)]
+struct TraceDirtyRecord {
+    present: bool,
+    id: i64,
+    key: usize,
+    value: usize,
+}
+
+#[derive(Serialize)]
+struct TraceCleanRecord {
+    present: bool,
+    id: i64,
+    key: usize,
+    value: usize,
+}
+
+#[derive(Serialize)]
+struct TraceDurableValue {
+    present: bool,
+    value: usize,
+    seq: i64,
+}
+
+impl From<&ModelState> for TraceState {
+    fn from(state: &ModelState) -> Self {
+        let visible = state
+            .visible
+            .iter()
+            .map(|entry| match *entry {
+                VisibleRef::None => TraceVisibleRef {
+                    kind: "None",
+                    id: -1,
+                },
+                VisibleRef::Dirty(id) => TraceVisibleRef {
+                    kind: "Dirty",
+                    id: id as i64,
+                },
+                VisibleRef::Clean(id) => TraceVisibleRef {
+                    kind: "Clean",
+                    id: id as i64,
+                },
+            })
+            .collect();
+
+        let write_store = state
+            .write_store
+            .iter()
+            .map(|record| TraceDirtyRecord {
+                present: record.present,
+                id: record.id.map(|id| id as i64).unwrap_or(-1),
+                key: record.key,
+                value: record.value,
+            })
+            .collect();
+
+        let write_hist = state
+            .write_hist
+            .iter()
+            .map(|record| TraceDirtyRecord {
+                present: record.present,
+                id: record.id.map(|id| id as i64).unwrap_or(-1),
+                key: record.key,
+                value: record.value,
+            })
+            .collect();
+
+        let cache_store = state
+            .cache_store
+            .iter()
+            .map(|record| TraceCleanRecord {
+                present: record.present,
+                id: record.id.map(|id| id as i64).unwrap_or(-1),
+                key: record.key,
+                value: record.value,
+            })
+            .collect();
+
+        let durable = state
+            .durable
+            .iter()
+            .map(|value| TraceDurableValue {
+                present: value.present,
+                value: value.value,
+                seq: value.seq.map(|seq| seq as i64).unwrap_or(-1),
+            })
+            .collect();
+
+        Self {
+            visible,
+            write_store,
+            write_hist,
+            dirty_q: state.dirty_q.clone(),
+            cache_store,
+            durable,
+            flushed: state.flushed.clone(),
+            created_dirty: state.created_dirty.clone(),
+            next_write: state.next_write,
+            next_cache: state.next_cache,
+            crashed: state.crashed,
+            bad_read: state.bad_read,
+        }
+    }
 }
 
 #[cfg(test)]

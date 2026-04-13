@@ -16,25 +16,25 @@ EXTENDS Integers, Sequences
 
 TraceLog == <<
   [ action |-> "init",
-    visible |-> << [kind |-> "None"], [kind |-> "None"] >>,
+    visible |-> << [kind |-> "None", id |-> -1], [kind |-> "None", id |-> -1] >>,
     write_store |-> <<
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     write_hist |-> <<
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     dirty_q |-> <<>>,
     cache_store |-> <<
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     durable |-> <<
-      [present |-> FALSE, value |-> 0, seq |-> "null"],
-      [present |-> FALSE, value |-> 0, seq |-> "null"]
+      [present |-> FALSE, value |-> 0, seq |-> -1],
+      [present |-> FALSE, value |-> 0, seq |-> -1]
     >>,
     flushed |-> <<>>,
     created_dirty |-> << FALSE, FALSE, FALSE >>,
@@ -44,25 +44,25 @@ TraceLog == <<
     bad_read |-> FALSE
   ],
   [ action |-> "WriterWrite",
-    visible |-> << [kind |-> "Dirty", id |-> 0], [kind |-> "None"] >>,
+    visible |-> << [kind |-> "Dirty", id |-> 0], [kind |-> "None", id |-> -1] >>,
     write_store |-> <<
       [present |-> TRUE, id |-> 0, key |-> 0, value |-> 1],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     write_hist |-> <<
       [present |-> TRUE, id |-> 0, key |-> 0, value |-> 1],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     dirty_q |-> <<0>>,
     cache_store |-> <<
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0],
-      [present |-> FALSE, id |-> "null", key |-> 0, value |-> 0]
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0],
+      [present |-> FALSE, id |-> -1, key |-> 0, value |-> 0]
     >>,
     durable |-> <<
-      [present |-> FALSE, value |-> 0, seq |-> "null"],
-      [present |-> FALSE, value |-> 0, seq |-> "null"]
+      [present |-> FALSE, value |-> 0, seq |-> -1],
+      [present |-> FALSE, value |-> 0, seq |-> -1]
     >>,
     flushed |-> <<>>,
     created_dirty |-> << TRUE, FALSE, FALSE >>,
