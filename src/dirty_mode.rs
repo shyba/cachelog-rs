@@ -288,6 +288,7 @@ mod imp {
         pending_len: CachePadded<AtomicUsize>,
         queue: DirtyQueue<K, V>,
         alloc_mode: DirtyAllocMode,
+        append_lock: Mutex<()>,
         staged: Mutex<VecDeque<Arc<DirtyRecord<K, V>>>>,
         inflight: Mutex<Option<FlushBatch<K, V>>>,
         #[cfg(test)]
@@ -307,6 +308,7 @@ mod imp {
                 pending_len: CachePadded(AtomicUsize::new(0)),
                 queue: DirtyQueue::new(capacity, queue_backend),
                 alloc_mode,
+                append_lock: new_mutex(()),
                 staged: new_mutex(VecDeque::new()),
                 inflight: new_mutex(None),
                 #[cfg(test)]
@@ -315,6 +317,7 @@ mod imp {
         }
 
         fn append(&self, key: K, value: V) -> Self::VisibleDirty {
+            let _guard = lock(&self.append_lock);
             let id = self.next_id.0.fetch_add(1, Ordering::Relaxed);
             let record = Arc::new(DirtyRecord { id, key, value });
             self.queue.send_one(record.clone());
@@ -330,6 +333,7 @@ mod imp {
             if entries.is_empty() {
                 return Vec::new();
             }
+            let _guard = lock(&self.append_lock);
             let len = entries.len();
             let base = self.next_id.0.fetch_add(len as u64, Ordering::Relaxed);
             let mut out = Vec::with_capacity(len);

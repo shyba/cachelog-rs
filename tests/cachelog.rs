@@ -113,6 +113,20 @@ fn list_prefix_scans_visible_entries_without_flush() {
 }
 
 #[test]
+fn list_prefix_returns_keys_in_lexicographic_order() {
+    let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
+    map.insert_dirty(b"ab:20".to_vec(), 20);
+    map.insert_dirty(b"ab:03".to_vec(), 3);
+    map.insert_dirty(b"ab:11".to_vec(), 11);
+
+    let keys = map.list_prefix(b"ab:", |key, _, _, _| key.clone(), 16);
+    assert_eq!(
+        keys,
+        vec![b"ab:03".to_vec(), b"ab:11".to_vec(), b"ab:20".to_vec()]
+    );
+}
+
+#[test]
 fn list_prefix_respects_limit() {
     let map = CacheLogMap::<Vec<u8>, usize>::new(CacheLogConfig::new(64, 64, 64));
     map.insert_dirty(b"ab:1".to_vec(), 1);
@@ -627,9 +641,30 @@ fn run_dirty_backend_concurrent_flush_case(backend: DirtyQueueBackend) {
             flushed.fetch_add(n, Ordering::AcqRel);
         }
 
-        assert_eq!(flushed.load(Ordering::Acquire), total);
-        assert_eq!(map.dirty_log_len(), 0);
-        assert_eq!(map.visible_len(), 0);
+        let flushed_count = flushed.load(Ordering::Acquire);
+        let dirty_len = map.dirty_log_len();
+        let visible_len = map.visible_len();
+        let mut leftovers = Vec::new();
+        for key in 0..total {
+            if let Some((value, state, visible)) = map.read(&key, |_, v, s, vr| (*v, s, vr)) {
+                leftovers.push((key, value, state, visible));
+                if leftovers.len() >= 16 {
+                    break;
+                }
+            }
+        }
+        assert_eq!(
+            flushed_count, total,
+            "backend={backend:?} alloc={alloc_mode:?} flushed={flushed_count} total={total}"
+        );
+        assert_eq!(
+            dirty_len, 0,
+            "backend={backend:?} alloc={alloc_mode:?} dirty_len={dirty_len}"
+        );
+        assert_eq!(
+            visible_len, 0,
+            "backend={backend:?} alloc={alloc_mode:?} visible_len={visible_len} leftovers={leftovers:?}"
+        );
     }
 }
 

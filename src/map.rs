@@ -94,6 +94,7 @@ where
     clean_count: AtomicUsize,
     next_cache: AtomicU64,
     next_dirty_write: AtomicU64,
+    strict_flushed_upto: AtomicU64,
     coalesced_dirty_count: AtomicUsize,
     coalesced_inflight: Mutex<Option<FlushBatch<K, V>>>,
 }
@@ -128,6 +129,7 @@ where
             clean_count: AtomicUsize::new(0),
             next_cache: AtomicU64::new(0),
             next_dirty_write: AtomicU64::new(0),
+            strict_flushed_upto: AtomicU64::new(u64::MAX),
             coalesced_dirty_count: AtomicUsize::new(0),
             coalesced_inflight: new_mutex(None),
         }
@@ -224,37 +226,16 @@ where
         if limit == 0 {
             return 0;
         }
+        let keys = self.snapshot_prefix_keys_sorted(prefix, limit);
         let mut matched = 0_usize;
-        self.visible.iter_sync(|_, visible| {
-            if matched >= limit {
-                return false;
+        for key in keys {
+            if self
+                .read(key.borrow(), |k, v, s, vr| reader(k, v, s, vr))
+                .is_some()
+            {
+                matched += 1;
             }
-            match visible {
-                VisibleValue::Dirty(record) => {
-                    if record.key.borrow().starts_with(prefix) {
-                        reader(
-                            &record.key,
-                            &record.value,
-                            EntryState::Dirty,
-                            VisibleRef::Dirty(record.id),
-                        );
-                        matched += 1;
-                    }
-                }
-                VisibleValue::Clean(record) => {
-                    if record.key.borrow().starts_with(prefix) {
-                        reader(
-                            &record.key,
-                            &record.value,
-                            EntryState::Clean,
-                            VisibleRef::Clean(record.id),
-                        );
-                        matched += 1;
-                    }
-                }
-            }
-            matched < limit
-        });
+        }
         matched
     }
 
@@ -270,21 +251,13 @@ where
         if limit == 0 {
             return 0;
         }
+        let keys = self.snapshot_prefix_keys_sorted(prefix, limit);
         let mut matched = 0_usize;
-        self.visible.iter_sync(|_, visible| {
-            if matched >= limit {
-                return false;
-            }
-            let key = match visible {
-                VisibleValue::Dirty(record) => &record.key,
-                VisibleValue::Clean(record) => &record.key,
-            };
-            if key.borrow().starts_with(prefix) {
-                reader(key);
+        for key in keys {
+            if self.read(key.borrow(), |k, _, _, _| reader(k)).is_some() {
                 matched += 1;
             }
-            matched < limit
-        });
+        }
         matched
     }
 
@@ -309,6 +282,31 @@ where
             limit,
         );
         out
+    }
+
+    fn snapshot_prefix_keys_sorted(&self, prefix: &[u8], limit: usize) -> Vec<K>
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return Vec::new();
+        }
+        let mut keys = Vec::with_capacity(limit.min(1024));
+        self.visible.iter_sync(|_, visible| {
+            if keys.len() >= limit {
+                return false;
+            }
+            let key = match visible {
+                VisibleValue::Dirty(record) => &record.key,
+                VisibleValue::Clean(record) => &record.key,
+            };
+            if key.borrow().starts_with(prefix) {
+                keys.push(key.clone());
+            }
+            keys.len() < limit
+        });
+        keys.sort_unstable_by(|left, right| left.borrow().cmp(right.borrow()));
+        keys
     }
 
     pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
@@ -414,11 +412,19 @@ where
                 if marked == 0 {
                     return 0;
                 }
+
+                if let Some(last_id) = batch.last_id() {
+                    self.advance_strict_flushed_upto(last_id);
+                }
+                let strict_flushed_upto = self.strict_flushed_upto.load(Ordering::SeqCst);
+
                 for record in batch.entries.iter() {
-                    let id = record.id;
-                    let _ = self.visible.remove_if_sync(&record.key, |visible| {
-                        matches!(visible, VisibleValue::Dirty(current) if current.id == id)
-                    });
+                    let _ = self
+                        .visible
+                        .remove_if_sync(&record.key, |visible| match visible {
+                            VisibleValue::Dirty(current) => current.id <= strict_flushed_upto,
+                            VisibleValue::Clean(_) => true,
+                        });
                 }
                 marked
             }
@@ -437,9 +443,14 @@ where
     }
 
     fn publish_dirty_record(&self, record: Arc<DirtyRecord<K, V>>) {
+        let id = record.id;
+        if self.is_strict_flushed(id) {
+            return;
+        }
+
         let visible_key = record.key.clone();
-        let visible = VisibleValue::Dirty(record);
-        match self.visible.entry_sync(visible_key) {
+        let visible = VisibleValue::Dirty(record.clone());
+        match self.visible.entry_sync(visible_key.clone()) {
             MapEntry::Occupied(mut occupied) => {
                 if matches!(occupied.get(), VisibleValue::Clean(_)) {
                     self.clean_count.fetch_sub(1, Ordering::Relaxed);
@@ -449,6 +460,15 @@ where
             MapEntry::Vacant(vacant) => {
                 vacant.insert_entry(visible);
             }
+        }
+
+        // Close the publish-after-flush race window: if flush advanced while we
+        // were inserting, remove this stale dirty publication immediately.
+        if self.is_strict_flushed(id) {
+            let _ = self.visible.remove_if_sync(
+                &visible_key,
+                |entry| matches!(entry, VisibleValue::Dirty(current) if current.id == id),
+            );
         }
     }
 
@@ -566,6 +586,29 @@ where
 
     fn next_write_id(&self) -> WriteId {
         self.next_dirty_write.fetch_add(1, Ordering::Relaxed)
+    }
+
+    fn is_strict_flushed(&self, id: WriteId) -> bool {
+        let flushed_upto = self.strict_flushed_upto.load(Ordering::SeqCst);
+        flushed_upto != u64::MAX && id <= flushed_upto
+    }
+
+    fn advance_strict_flushed_upto(&self, id: WriteId) {
+        let mut current = self.strict_flushed_upto.load(Ordering::SeqCst);
+        loop {
+            if current != u64::MAX && current >= id {
+                return;
+            }
+            match self.strict_flushed_upto.compare_exchange_weak(
+                current,
+                id,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => return,
+                Err(observed) => current = observed,
+            }
+        }
     }
 
     fn flush_batch_coalesced(&self, limit: usize) -> FlushBatch<K, V> {
