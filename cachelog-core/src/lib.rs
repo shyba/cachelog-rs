@@ -1,8 +1,8 @@
 mod model;
 
 pub use model::{
-    CacheId, CleanRecord, DurableValue, InvariantReport, KeyId, ModelConfig, ModelError,
-    ModelState, ModelStep, ValueId, VisibleRef, WriteId,
+    CacheId, CleanRecord, DurableValue, InvariantMode, InvariantReport, KeyId, ModelConfig,
+    ModelError, ModelState, ModelStep, ValueId, VisibleRef, WriteId,
 };
 
 #[cfg(not(creusot))]
@@ -13,3 +13,6 @@ pub use model::{
 
 #[cfg(feature = "creusot")]
 pub mod proofs;
+
+#[cfg(kani)]
+mod kani;

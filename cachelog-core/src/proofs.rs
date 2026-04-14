@@ -2,10 +2,12 @@
 
 use creusot_std::prelude::*;
 
+#[allow(unused_imports)]
 use crate::model::DirtyRecord;
+#[allow(unused_imports)]
 use crate::{
-    CacheId, CleanRecord, DurableValue, KeyId, ModelConfig, ModelError, ModelState, ValueId,
-    VisibleRef, WriteId,
+    CacheId, CleanRecord, DurableValue, InvariantMode, KeyId, ModelConfig, ModelError, ModelState,
+    ValueId, VisibleRef, WriteId,
 };
 
 #[logic(open)]
@@ -243,6 +245,29 @@ pub fn inv(state: ModelState, cfg: ModelConfig) -> bool {
     }
 }
 
+#[logic(open)]
+pub fn inv_coalesced(state: ModelState, cfg: ModelConfig) -> bool {
+    pearlite! {
+        shape_ok(state, cfg) &&
+        dirty_refs_live(state, cfg) &&
+        clean_refs_key_consistent(state, cfg) &&
+        all_ids_lt_next_write(state) &&
+        no_lost_dirty(state, cfg) &&
+        no_bad_read(state) &&
+        durable_matches_flushed(state, cfg)
+    }
+}
+
+#[logic(open)]
+pub fn inv_for_mode(state: ModelState, cfg: ModelConfig, mode: InvariantMode) -> bool {
+    pearlite! {
+        match mode {
+            InvariantMode::StrictLog => inv(state, cfg),
+            InvariantMode::CoalescedMap => inv_coalesced(state, cfg),
+        }
+    }
+}
+
 #[requires(valid_config(cfg))]
 #[ensures(result == shape_ok(*state, cfg))]
 pub fn type_ok_holds(state: &ModelState, cfg: ModelConfig) -> bool {
@@ -311,6 +336,16 @@ pub fn invariants_hold_holds(state: &ModelState, cfg: ModelConfig) -> bool {
         && state.durable_matches_flushed(cfg)
         && state.no_lost_dirty(cfg)
         && !state.bad_read
+}
+
+#[requires(valid_config(cfg))]
+#[ensures(result == inv_for_mode(*state, cfg, mode))]
+pub fn invariants_hold_for_mode_holds(
+    state: &ModelState,
+    cfg: ModelConfig,
+    mode: InvariantMode,
+) -> bool {
+    state.check_invariants_for_mode(cfg, mode).is_ok()
 }
 
 #[requires(valid_config(cfg))]

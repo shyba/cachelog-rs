@@ -173,6 +173,56 @@ pub fn assert_snapshot_legal(snapshot: &DebugSnapshot<usize, usize>) {
     }
 }
 
+#[allow(dead_code)]
+pub fn assert_snapshot_legal_coalesced(snapshot: &DebugSnapshot<usize, usize>) {
+    let mut visible_dirty_ids = BTreeSet::new();
+    let mut visible_clean_count = 0usize;
+
+    for (visible_key, visible) in &snapshot.visible {
+        match visible {
+            DebugVisible::Dirty(record) => {
+                assert_eq!(*visible_key, record.key);
+                assert!(record.id < snapshot.next_write);
+                assert!(visible_dirty_ids.insert(record.id));
+            }
+            DebugVisible::Clean(record) => {
+                visible_clean_count += 1;
+                assert_eq!(*visible_key, record.key);
+                assert!(record.id < snapshot.next_cache);
+            }
+        }
+    }
+
+    assert_eq!(visible_clean_count, snapshot.clean_count);
+
+    for record in snapshot
+        .dirty_pending
+        .iter()
+        .chain(snapshot.dirty_inflight.iter())
+    {
+        assert!(record.id < snapshot.next_write);
+    }
+
+    let pending_ids = snapshot
+        .dirty_pending
+        .iter()
+        .map(|record| record.id)
+        .collect::<BTreeSet<_>>();
+    let inflight_ids = snapshot
+        .dirty_inflight
+        .iter()
+        .map(|record| record.id)
+        .collect::<BTreeSet<_>>();
+
+    assert!(pending_ids.is_disjoint(&inflight_ids));
+
+    for (_, visible) in &snapshot.visible {
+        if let DebugVisible::Dirty(record) = visible {
+            assert!(pending_ids.contains(&record.id) || inflight_ids.contains(&record.id));
+        }
+    }
+}
+
 fn assert_strictly_increasing(ids: &[u64], label: &str) {
     for pair in ids.windows(2) {
         assert!(

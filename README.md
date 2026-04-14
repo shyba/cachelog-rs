@@ -49,6 +49,35 @@ The flusher never blocks readers. Old dirty entries are removed only when the
 exact flushed record still matches the visible reference, so newer writes are
 never lost.
 
+
+## Write modes
+
+`CacheLogConfig` supports two dirty write modes:
+
+- `DirtyWriteMode::StrictLog` (default): every dirty write is logged and flushed in write order.
+- `DirtyWriteMode::CoalescedMap`: batch writes can coalesce repeated keys (last value wins within the batch) for higher producer throughput.
+
+Use `StrictLog` when replaying every intermediate write matters.
+Use `CoalescedMap` when latest-value durability is sufficient and throughput is prioritized.
+
+## Batch writes
+
+- `insert_dirty_batch` reserves visible-map capacity for the batch.
+- In `StrictLog`, all batch entries are appended/flushed in order.
+- In `CoalescedMap`, repeated keys within the same batch are deduplicated and published directly into the visible map (no ordered dirty-log append path).
+
+
+## Dirty queue and allocation modes
+
+`CacheLogConfig` also exposes runtime dirty-path knobs:
+
+- `with_dirty_queue_backend(DirtyQueueBackend::{Kanal|Crossbeam|StdSync})`
+- `with_dirty_alloc_mode(DirtyAllocMode::{OwnedPerWrite|PooledVec|ChunkedArena})`
+
+Current default is `Kanal + ChunkedArena`.
+
+Queue backend selection is active in non-loom runtime for `StrictLog` mode. `CoalescedMap` bypasses the ordered dirty queue on write-path publication and flushes from visible dirty entries.
+
 ## Verification boundary
 
 This repository has a verified **semantic core**, not an end-to-end formal proof
@@ -61,7 +90,7 @@ of the live concurrent crate.
   `model-cachelog/formal/`
 - **Creusot proofs** verify invariant preservation for the deterministic core
   state machine in [`cachelog-core`](/home/user/repos/tableflip-rs/cachelog-core)
-- **Conformance tests** compare the live crate against that core model on
+- **Conformance tests** compare `StrictLog` live behavior against that core model on
   deterministic operation sequences
 - **Loom tests** explore selected interleavings of the live concurrent
   implementation

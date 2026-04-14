@@ -1,21 +1,17 @@
-//! `cachelog-rs` provides a concurrent visible-index map backed by an ordered dirty write log and
-//! an optional clean cache store.
+//! `cachelog-rs` provides a concurrent visible-index map with an optional clean cache store.
 //!
-//! The core model is:
+//! Dirty-write behavior is mode-driven:
+//!
+//! - `DirtyWriteMode::StrictLog`: dirty writes append to an ordered log, flush order follows that log
+//! - `DirtyWriteMode::CoalescedMap`: dirty writes publish directly to the visible map, and flush
+//!   drains current visible dirty entries (latest-value throughput mode)
+//!
+//! Shared core behavior:
 //!
 //! - one concurrent visible index keyed by `K`
-//! - dirty writes append to an ordered log and install a visible `Dirty` ref
 //! - clean cache entries install a visible `Clean` ref
 //! - reads consult only the visible index and resolve the underlying record
-//! - dirty refs are held in the visible index until flusher-side conditional cleanup
-//!
-//! Flush ordering is derived from the dirty log rather than by scanning the visible index.
-//!
-//! Current implementation detail:
-//!
-//! - visible dirty entries are stored directly in the visible map
-//! - dirty flush order is maintained by an explicit ordered FIFO dirty mode
-//! - `mark_flushed()` conditionally removes only the exact flushed visible record
+//! - `mark_flushed()` conditionally removes only the exact flushed visible record id
 //! - clean eviction removes the visible clean entry immediately
 //! - `VisibleRef::Dirty` is the stable logical dirty write id stored in each dirty record
 //!
@@ -27,7 +23,8 @@
 //! Formal proof boundary:
 //!
 //! - `cachelog-core` proves the deterministic semantic state machine
-//! - `cachelog-rs` is validated against that model with conformance tests and loom scenarios
+//! - `cachelog-rs` `StrictLog` mode is validated against that model with conformance tests and loom scenarios
+//! - `CoalescedMap` is tested for safety/invariants but intentionally relaxes ordered-flush semantics
 //! - the live concurrent implementation is not deductively verified end to end
 //!
 mod byte_prefix_map;
@@ -37,7 +34,8 @@ mod map;
 mod sync;
 
 pub use byte_prefix_map::BytePrefixMap;
+pub use dirty_mode::{DirtyAllocMode, DirtyQueueBackend};
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
-pub use map::{CacheLogConfig, CacheLogMap};
+pub use map::{CacheLogConfig, CacheLogMap, DirtyWriteMode};
 #[cfg(feature = "loom")]
 pub use map::{DebugRecord, DebugSnapshot, DebugVisible};

@@ -14,15 +14,17 @@ contains:
 - optional `tla-connect` integration
 - no proof logic of its own; proofs live in `cachelog-core`
 
-The live crate currently uses a stronger dirty-visibility implementation detail than the
-abstract model: visible dirty entries are published directly via `sdd` and compared by
-opaque record identity during flush-side cleanup. The model still matches the semantics
-that matter for verification:
+The model currently tracks the ordered dirty-flush semantics used by
+`cachelog-rs` `DirtyWriteMode::StrictLog`. It matches the semantics that matter
+for that verified surface:
 
 - one visible entry per key
 - ordered dirty flush
 - conditional clearing only when the flushed record is still the visible one
 - stale clean windows may exist until cleanup
+
+`DirtyWriteMode::CoalescedMap` is intentionally outside this strict ordered model:
+it is validated with crate tests/loom/proptests as a throughput-focused mode.
 
 The model stays slightly more permissive than the current live crate on purpose:
 

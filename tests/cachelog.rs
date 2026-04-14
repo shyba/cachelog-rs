@@ -6,7 +6,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
-use cachelog::{BytePrefixMap, CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
+use cachelog::{
+    BytePrefixMap, CacheLogConfig, CacheLogMap, DirtyAllocMode, DirtyQueueBackend, DirtyWriteMode,
+    EntryState, VisibleRef,
+};
 
 fn read_triplet<K, Q, V>(map: &CacheLogMap<K, V>, key: &Q) -> Option<(V, EntryState, VisibleRef)>
 where
@@ -439,4 +442,226 @@ fn byte_prefix_map_mark_flushed_keeps_rewritten_key_in_trie() {
         map.list_prefix(b"ab:", |_, value, _, _| *value, 10),
         vec![2]
     );
+}
+
+#[test]
+fn insert_dirty_batch_strict_keeps_all_writes_in_order() {
+    let map = CacheLogMap::<String, usize>::new(CacheLogConfig::new(32, 32, 32));
+
+    let ids = map.insert_dirty_batch(vec![
+        ("same".to_owned(), 1),
+        ("same".to_owned(), 2),
+        ("same".to_owned(), 3),
+    ]);
+
+    assert_eq!(ids.len(), 3);
+    let batch = map.flush_batch(10);
+    let values = batch.iter().map(|entry| entry.value).collect::<Vec<_>>();
+    assert_eq!(values, vec![1, 2, 3]);
+}
+
+#[test]
+fn insert_dirty_batch_coalesced_keeps_last_per_key_for_batch() {
+    let cfg = CacheLogConfig::new(32, 32, 32).with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+    let map = CacheLogMap::<String, usize>::new(cfg);
+
+    let ids = map.insert_dirty_batch(vec![
+        ("same".to_owned(), 1),
+        ("same".to_owned(), 2),
+        ("other".to_owned(), 9),
+        ("same".to_owned(), 3),
+    ]);
+
+    assert_eq!(ids.len(), 2);
+    assert!(matches!(
+        read_triplet(&map, &"same".to_owned()),
+        Some((3, EntryState::Dirty, VisibleRef::Dirty(_)))
+    ));
+    assert!(matches!(
+        read_triplet(&map, &"other".to_owned()),
+        Some((9, EntryState::Dirty, VisibleRef::Dirty(_)))
+    ));
+
+    let batch = map.flush_batch(10);
+    assert_eq!(batch.len(), 2);
+    let mut rows = batch
+        .iter()
+        .map(|entry| (entry.key.clone(), entry.value))
+        .collect::<Vec<_>>();
+    rows.sort();
+    assert_eq!(rows, vec![("other".to_owned(), 9), ("same".to_owned(), 3)]);
+}
+
+fn all_alloc_modes() -> [DirtyAllocMode; 3] {
+    [
+        DirtyAllocMode::OwnedPerWrite,
+        DirtyAllocMode::PooledVec,
+        DirtyAllocMode::ChunkedArena,
+    ]
+}
+
+fn run_dirty_backend_order_case(backend: DirtyQueueBackend) {
+    for alloc_mode in all_alloc_modes() {
+        let cfg = CacheLogConfig::new(64, 64, 64)
+            .with_dirty_queue_backend(backend)
+            .with_dirty_alloc_mode(alloc_mode);
+        let map = CacheLogMap::<String, usize>::new(cfg);
+
+        let ids = map.insert_dirty_batch(vec![
+            ("k1".to_owned(), 1),
+            ("k2".to_owned(), 2),
+            ("k3".to_owned(), 3),
+        ]);
+        assert_eq!(ids.len(), 3);
+
+        let batch = map.flush_batch(10);
+        assert_eq!(batch.len(), 3);
+        let rows = batch
+            .iter()
+            .map(|entry| (entry.id, entry.key.clone(), entry.value))
+            .collect::<Vec<_>>();
+
+        assert_eq!(rows[0].1, "k1");
+        assert_eq!(rows[1].1, "k2");
+        assert_eq!(rows[2].1, "k3");
+        assert_eq!(map.mark_flushed(&batch), 3);
+        assert_eq!(map.dirty_log_len(), 0);
+    }
+}
+
+#[test]
+fn dirty_queue_backend_kanal_preserves_order_and_flush() {
+    run_dirty_backend_order_case(DirtyQueueBackend::Kanal);
+}
+
+#[test]
+fn dirty_queue_backend_crossbeam_preserves_order_and_flush() {
+    run_dirty_backend_order_case(DirtyQueueBackend::Crossbeam);
+}
+
+#[test]
+fn dirty_queue_backend_stdsync_preserves_order_and_flush() {
+    run_dirty_backend_order_case(DirtyQueueBackend::StdSync);
+}
+
+#[test]
+fn dirty_alloc_modes_preserve_strict_batch_order() {
+    for alloc_mode in all_alloc_modes() {
+        let cfg = CacheLogConfig::new(16, 16, 16)
+            .with_dirty_write_mode(DirtyWriteMode::StrictLog)
+            .with_dirty_alloc_mode(alloc_mode)
+            .with_dirty_queue_backend(DirtyQueueBackend::Kanal);
+        let map = CacheLogMap::<String, usize>::new(cfg);
+
+        let _ = map.insert_dirty_batch(vec![
+            ("k1".to_owned(), 1),
+            ("k2".to_owned(), 2),
+            ("k3".to_owned(), 3),
+            ("k4".to_owned(), 4),
+        ]);
+
+        let batch = map.flush_batch(8);
+        let values = batch.iter().map(|entry| entry.value).collect::<Vec<_>>();
+        assert_eq!(values, vec![1, 2, 3, 4]);
+        assert_eq!(map.mark_flushed(&batch), 4);
+        assert_eq!(map.dirty_log_len(), 0);
+    }
+}
+
+fn run_dirty_backend_concurrent_flush_case(backend: DirtyQueueBackend) {
+    for alloc_mode in all_alloc_modes() {
+        let cfg = CacheLogConfig::new(2048, 2048, 64)
+            .with_dirty_queue_backend(backend)
+            .with_dirty_alloc_mode(alloc_mode);
+        let map = Arc::new(CacheLogMap::<usize, usize>::new(cfg));
+
+        let writer_count = 4usize;
+        let per_writer = 250usize;
+        let total = writer_count * per_writer;
+        let done = Arc::new(AtomicBool::new(false));
+        let flushed = Arc::new(AtomicUsize::new(0));
+
+        let mut writers = Vec::new();
+        for w in 0..writer_count {
+            let map = map.clone();
+            writers.push(thread::spawn(move || {
+                let base = w * per_writer;
+                for i in 0..per_writer {
+                    let k = base + i;
+                    let _ = map.insert_dirty(k, k);
+                }
+            }));
+        }
+
+        let map_f = map.clone();
+        let done_f = done.clone();
+        let flushed_f = flushed.clone();
+        let flusher = thread::spawn(move || {
+            loop {
+                let batch = map_f.flush_batch(64);
+                if batch.is_empty() {
+                    if done_f.load(Ordering::Acquire) {
+                        break;
+                    }
+                    thread::yield_now();
+                    continue;
+                }
+                let n = map_f.mark_flushed(&batch);
+                flushed_f.fetch_add(n, Ordering::AcqRel);
+            }
+        });
+
+        for w in writers {
+            w.join().expect("writer join");
+        }
+        done.store(true, Ordering::Release);
+        flusher.join().expect("flusher join");
+
+        // Drain any tail race after done signal.
+        loop {
+            let batch = map.flush_batch(64);
+            if batch.is_empty() {
+                break;
+            }
+            let n = map.mark_flushed(&batch);
+            flushed.fetch_add(n, Ordering::AcqRel);
+        }
+
+        assert_eq!(flushed.load(Ordering::Acquire), total);
+        assert_eq!(map.dirty_log_len(), 0);
+        assert_eq!(map.visible_len(), 0);
+    }
+}
+
+#[test]
+fn dirty_queue_backend_kanal_concurrent_flushes_all() {
+    run_dirty_backend_concurrent_flush_case(DirtyQueueBackend::Kanal);
+}
+
+#[test]
+fn dirty_queue_backend_crossbeam_concurrent_flushes_all() {
+    run_dirty_backend_concurrent_flush_case(DirtyQueueBackend::Crossbeam);
+}
+
+#[test]
+fn dirty_queue_backend_stdsync_concurrent_flushes_all() {
+    run_dirty_backend_concurrent_flush_case(DirtyQueueBackend::StdSync);
+}
+
+#[test]
+fn coalesced_dirty_log_len_tracks_visible_dirty_backlog() {
+    let cfg = CacheLogConfig::new(32, 32, 32).with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+    let map = CacheLogMap::<String, usize>::new(cfg);
+
+    map.insert_dirty("a".to_owned(), 1);
+    map.insert_dirty("b".to_owned(), 2);
+    map.insert_dirty("a".to_owned(), 3);
+
+    assert_eq!(map.dirty_log_len(), 2);
+
+    let batch = map.flush_batch(16);
+    assert_eq!(map.mark_flushed(&batch), batch.len());
+    assert_eq!(map.dirty_log_len(), 0);
+    assert!(map.read(&"a".to_owned(), |_, v, s, r| (*v, s, r)).is_none());
+    assert!(map.read(&"b".to_owned(), |_, v, s, r| (*v, s, r)).is_none());
 }

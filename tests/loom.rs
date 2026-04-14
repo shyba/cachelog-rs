@@ -4,9 +4,43 @@ mod loom_support;
 
 use loom::sync::Arc;
 use loom::thread;
+use std::hash::{BuildHasher, Hasher};
 
-use cachelog::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
-use loom_support::{STACK, assert_public_consistency, assert_snapshot_legal, run_fast_model};
+use cachelog::{CacheLogConfig, CacheLogMap, DirtyWriteMode, EntryState, VisibleRef};
+
+#[derive(Clone, Default)]
+struct DeterministicBuildHasher;
+
+#[derive(Default)]
+struct DeterministicHasher(u64);
+
+impl Hasher for DeterministicHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        let mut hash = 0xcbf29ce484222325u64;
+        for &b in bytes {
+            hash ^= u64::from(b);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        self.0 = hash;
+    }
+}
+
+impl BuildHasher for DeterministicBuildHasher {
+    type Hasher = DeterministicHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        DeterministicHasher::default()
+    }
+}
+
+use loom_support::{
+    STACK, assert_public_consistency, assert_snapshot_legal, assert_snapshot_legal_coalesced,
+    run_fast_model,
+};
 
 #[test]
 fn newer_dirty_survives_flush_of_older() {
@@ -295,5 +329,96 @@ fn public_api_is_consistent_after_write_race_joins() {
 
         assert_public_consistency(&map, 7);
         assert_snapshot_legal(&map.debug_snapshot());
+    });
+}
+
+#[test]
+fn coalesced_concurrent_writers_same_key_leave_a_valid_dirty_value() {
+    run_fast_model(|| {
+        let cfg = CacheLogConfig::new(4, 4, 4).with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+        let map = Arc::new(
+            CacheLogMap::<usize, usize, DeterministicBuildHasher>::with_hasher(
+                cfg,
+                DeterministicBuildHasher,
+            ),
+        );
+
+        let m1 = map.clone();
+        let writer1 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m1.insert_dirty(1, 11);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let writer2 = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.insert_dirty(1, 33);
+            })
+            .unwrap();
+
+        writer1.join().unwrap();
+        writer2.join().unwrap();
+
+        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        assert!(result.is_some());
+        let (val, state, vis) = result.unwrap();
+        assert!(matches!(val, 11 | 33));
+        assert_eq!(state, EntryState::Dirty);
+        assert!(matches!(vis, VisibleRef::Dirty(_)));
+        assert_snapshot_legal_coalesced(&map.debug_snapshot());
+    });
+}
+
+#[test]
+fn coalesced_newer_dirty_survives_flush_of_older() {
+    run_fast_model(|| {
+        let cfg = CacheLogConfig::new(4, 4, 4).with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+        let map = Arc::new(
+            CacheLogMap::<usize, usize, DeterministicBuildHasher>::with_hasher(
+                cfg,
+                DeterministicBuildHasher,
+            ),
+        );
+
+        let m = map.clone();
+        let setup = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 10);
+                m.flush_batch(1)
+            })
+            .unwrap();
+        let batch = setup.join().unwrap();
+
+        let m = map.clone();
+        let writer = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m.insert_dirty(1, 20);
+            })
+            .unwrap();
+
+        let m2 = map.clone();
+        let b = batch.clone();
+        let flusher = thread::Builder::new()
+            .stack_size(STACK)
+            .spawn(move || {
+                m2.mark_flushed(&b);
+            })
+            .unwrap();
+
+        writer.join().unwrap();
+        flusher.join().unwrap();
+
+        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        assert!(result.is_some());
+        let (val, state, vis) = result.unwrap();
+        assert_eq!(val, 20);
+        assert_eq!(state, EntryState::Dirty);
+        assert!(matches!(vis, VisibleRef::Dirty(_)));
+        assert_snapshot_legal_coalesced(&map.debug_snapshot());
     });
 }

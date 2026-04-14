@@ -197,6 +197,15 @@ pub enum ModelStep {
     Crash,
 }
 
+#[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
+#[cfg_attr(creusot, derive(DeepModel))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum InvariantMode {
+    #[default]
+    StrictLog,
+    CoalescedMap,
+}
+
 #[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize))]
 #[cfg_attr(creusot, derive(DeepModel))]
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -500,17 +509,31 @@ impl ModelState {
     }
 
     #[cfg(feature = "creusot")]
-    pub fn check_invariants(&self, config: ModelConfig) -> InvariantReport {
+    #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]
+    #[cfg_attr(
+        feature = "creusot",
+        ensures(result@.is_ok() == crate::proofs::inv_for_mode(*self, config, mode))
+    )]
+    pub fn check_invariants_for_mode(
+        &self,
+        config: ModelConfig,
+        mode: InvariantMode,
+    ) -> InvariantReport {
         let ok = self.type_ok(config)
             && self.dirty_refs_live(config)
             && self.clean_refs_key_consistent(config)
-            && self.dirty_q_ordered()
-            && self.flushed_ordered()
-            && self.queued_after_flushed()
-            && self.all_ids_lt_next_write()
             && self.durable_matches_flushed(config)
             && self.no_lost_dirty(config)
-            && !self.bad_read;
+            && !self.bad_read
+            && match mode {
+                InvariantMode::StrictLog => {
+                    self.dirty_q_ordered()
+                        && self.flushed_ordered()
+                        && self.queued_after_flushed()
+                        && self.all_ids_lt_next_write()
+                }
+                InvariantMode::CoalescedMap => self.all_ids_lt_next_write(),
+            };
 
         if ok {
             InvariantReport::default()
@@ -521,8 +544,17 @@ impl ModelState {
         }
     }
 
-    #[cfg(not(feature = "creusot"))]
+    #[cfg(feature = "creusot")]
     pub fn check_invariants(&self, config: ModelConfig) -> InvariantReport {
+        self.check_invariants_for_mode(config, InvariantMode::StrictLog)
+    }
+
+    #[cfg(not(feature = "creusot"))]
+    pub fn check_invariants_for_mode(
+        &self,
+        config: ModelConfig,
+        mode: InvariantMode,
+    ) -> InvariantReport {
         let mut report = InvariantReport::default();
 
         if !self.type_ok(config) {
@@ -534,17 +566,26 @@ impl ModelState {
         if !self.clean_refs_key_consistent(config) {
             report.failures.push("CleanRefsKeyConsistent");
         }
-        if !self.dirty_q_ordered() {
-            report.failures.push("DirtyQOrdered");
-        }
-        if !self.flushed_ordered() {
-            report.failures.push("FlushedOrdered");
-        }
-        if !self.queued_after_flushed() {
-            report.failures.push("QueuedAfterFlushed");
-        }
-        if !self.all_ids_lt_next_write() {
-            report.failures.push("AllIdsLtNextWrite");
+        match mode {
+            InvariantMode::StrictLog => {
+                if !self.dirty_q_ordered() {
+                    report.failures.push("DirtyQOrdered");
+                }
+                if !self.flushed_ordered() {
+                    report.failures.push("FlushedOrdered");
+                }
+                if !self.queued_after_flushed() {
+                    report.failures.push("QueuedAfterFlushed");
+                }
+                if !self.all_ids_lt_next_write() {
+                    report.failures.push("AllIdsLtNextWrite");
+                }
+            }
+            InvariantMode::CoalescedMap => {
+                if !self.all_ids_lt_next_write() {
+                    report.failures.push("AllIdsLtNextWrite");
+                }
+            }
         }
         if !self.durable_matches_flushed(config) {
             report.failures.push("DurableMatchesFlushed");
@@ -557,6 +598,11 @@ impl ModelState {
         }
 
         report
+    }
+
+    #[cfg(not(feature = "creusot"))]
+    pub fn check_invariants(&self, config: ModelConfig) -> InvariantReport {
+        self.check_invariants_for_mode(config, InvariantMode::StrictLog)
     }
 
     #[cfg_attr(feature = "creusot", requires(crate::proofs::valid_config(config)))]

@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use cachelog::{BytePrefixMap, CacheLogConfig, CacheLogMap};
+use cachelog::{BytePrefixMap, CacheLogConfig, CacheLogMap, DirtyWriteMode};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
 fn bench_dirty_write(c: &mut Criterion) {
@@ -180,66 +180,6 @@ fn build_prefix_key_pool() -> Arc<Vec<Vec<u8>>> {
     )
 }
 
-fn bench_prefix_dirty_write(c: &mut Criterion) {
-    let mut group = c.benchmark_group("live");
-    group.measurement_time(Duration::from_secs(3));
-    group.throughput(Throughput::Elements(1));
-
-    let key_pool = build_prefix_key_pool();
-
-    group.bench_function(
-        BenchmarkId::new("prefix_dirty_write", "steady_state_5k_pool"),
-        |b| {
-            let map = Arc::new(BytePrefixMap::<u64>::new(CacheLogConfig::new(
-                1 << 15,
-                1 << 15,
-                1 << 15,
-            )));
-
-            let mut idx = 0_u64;
-            b.iter(|| {
-                let key = key_pool[(idx as usize) % key_pool.len()].clone();
-                let id = map.insert_dirty(key, idx);
-                black_box(id);
-                idx = idx.wrapping_add(1);
-            });
-        },
-    );
-
-    group.bench_function(
-        BenchmarkId::new("prefix_dirty_write", "under_concurrent_advance_5k_pool"),
-        |b| {
-            let map = Arc::new(BytePrefixMap::<u64>::new(CacheLogConfig::new(
-                1 << 15,
-                1 << 15,
-                1 << 15,
-            )));
-            let stop = Arc::new(AtomicBool::new(false));
-            let advancer_map = Arc::clone(&map);
-            let advancer_stop = Arc::clone(&stop);
-            let advancer = thread::spawn(move || {
-                while !advancer_stop.load(Ordering::Acquire) {
-                    let _ = advancer_map.advance_trie(256);
-                    std::hint::spin_loop();
-                }
-            });
-
-            let mut idx = 0_u64;
-            b.iter(|| {
-                let key = key_pool[(idx as usize) % key_pool.len()].clone();
-                let id = map.insert_dirty(key, idx);
-                black_box(id);
-                idx = idx.wrapping_add(1);
-            });
-
-            stop.store(true, Ordering::Release);
-            advancer.join().unwrap();
-        },
-    );
-
-    group.finish();
-}
-
 fn bench_dirty_read_under_write(c: &mut Criterion) {
     let mut group = c.benchmark_group("live");
     group.measurement_time(Duration::from_secs(3));
@@ -329,193 +269,6 @@ fn bench_mixed_rw(c: &mut Criterion) {
             elapsed
         });
     });
-
-    group.finish();
-}
-
-fn bench_prefix_list(c: &mut Criterion) {
-    let mut group = c.benchmark_group("live");
-    group.measurement_time(Duration::from_secs(3));
-    group.throughput(Throughput::Elements(1));
-
-    let key_pool = build_prefix_key_pool();
-    let map = Arc::new(CacheLogMap::<Vec<u8>, u64>::new(CacheLogConfig::new(
-        1 << 15,
-        1 << 15,
-        1 << 15,
-    )));
-    for (i, key) in key_pool.iter().enumerate() {
-        map.insert_dirty(key.clone(), i as u64);
-    }
-
-    group.bench_function(BenchmarkId::new("prefix_list", "serial_5k"), |b| {
-        b.iter(|| {
-            let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
-            black_box(rows.len());
-        });
-    });
-
-    group.bench_function(BenchmarkId::new("prefix_for_each", "serial_5k"), |b| {
-        b.iter(|| {
-            let mut sum = 0_u64;
-            let matched = map.for_each_prefix(
-                b"ab:",
-                |_, value, _, _| {
-                    sum ^= *value;
-                },
-                5_000,
-            );
-            black_box(sum);
-            black_box(matched);
-        });
-    });
-
-    group.bench_function(BenchmarkId::new("prefix_for_each_key", "serial_5k"), |b| {
-        b.iter(|| {
-            let mut sum = 0_usize;
-            let matched = map.for_each_prefix_key(
-                b"ab:",
-                |key| {
-                    sum ^= key.len();
-                },
-                5_000,
-            );
-            black_box(sum);
-            black_box(matched);
-        });
-    });
-
-    group.bench_function(
-        BenchmarkId::new("prefix_list", "under_concurrent_write_5k"),
-        |b| {
-            let stop = Arc::new(AtomicBool::new(false));
-            let writer_map = Arc::clone(&map);
-            let writer_stop = Arc::clone(&stop);
-            let writer_keys = Arc::clone(&key_pool);
-            let writer = thread::spawn(move || {
-                let mut i = 0_u64;
-                while !writer_stop.load(Ordering::Acquire) {
-                    let idx = (i as usize) % writer_keys.len();
-                    let key = writer_keys[idx].clone();
-                    black_box(writer_map.insert_dirty(key, i));
-                    i = i.wrapping_add(1);
-                }
-            });
-
-            b.iter(|| {
-                let rows = map.list_prefix(b"ab:", |_, value, _, _| *value, 5_000);
-                black_box(rows.len());
-            });
-
-            stop.store(true, Ordering::Release);
-            writer.join().unwrap();
-        },
-    );
-
-    group.bench_function(
-        BenchmarkId::new("prefix_for_each", "under_concurrent_write_5k"),
-        |b| {
-            let stop = Arc::new(AtomicBool::new(false));
-            let writer_map = Arc::clone(&map);
-            let writer_stop = Arc::clone(&stop);
-            let writer_keys = Arc::clone(&key_pool);
-            let writer = thread::spawn(move || {
-                let mut i = 0_u64;
-                while !writer_stop.load(Ordering::Acquire) {
-                    let idx = (i as usize) % writer_keys.len();
-                    let key = writer_keys[idx].clone();
-                    black_box(writer_map.insert_dirty(key, i));
-                    i = i.wrapping_add(1);
-                }
-            });
-
-            b.iter(|| {
-                let mut sum = 0_u64;
-                let matched = map.for_each_prefix(
-                    b"ab:",
-                    |_, value, _, _| {
-                        sum ^= *value;
-                    },
-                    5_000,
-                );
-                black_box(sum);
-                black_box(matched);
-            });
-
-            stop.store(true, Ordering::Release);
-            writer.join().unwrap();
-        },
-    );
-
-    group.bench_function(
-        BenchmarkId::new("prefix_for_each_key", "under_concurrent_write_5k"),
-        |b| {
-            let stop = Arc::new(AtomicBool::new(false));
-            let writer_map = Arc::clone(&map);
-            let writer_stop = Arc::clone(&stop);
-            let writer_keys = Arc::clone(&key_pool);
-            let writer = thread::spawn(move || {
-                let mut i = 0_u64;
-                while !writer_stop.load(Ordering::Acquire) {
-                    let idx = (i as usize) % writer_keys.len();
-                    let key = writer_keys[idx].clone();
-                    black_box(writer_map.insert_dirty(key, i));
-                    i = i.wrapping_add(1);
-                }
-            });
-
-            b.iter(|| {
-                let mut sum = 0_usize;
-                let matched = map.for_each_prefix_key(
-                    b"ab:",
-                    |key| {
-                        sum ^= key.len();
-                    },
-                    5_000,
-                );
-                black_box(sum);
-                black_box(matched);
-            });
-
-            stop.store(true, Ordering::Release);
-            writer.join().unwrap();
-        },
-    );
-
-    group.bench_function(
-        BenchmarkId::new("prefix_for_each", "under_concurrent_write_5k_pregen_keys"),
-        |b| {
-            let stop = Arc::new(AtomicBool::new(false));
-            let writer_map = Arc::clone(&map);
-            let writer_stop = Arc::clone(&stop);
-            let writer_keys = Arc::clone(&key_pool);
-            let writer = thread::spawn(move || {
-                let mut i = 0_u64;
-                while !writer_stop.load(Ordering::Acquire) {
-                    let idx = (i as usize) % writer_keys.len();
-                    let key = writer_keys[idx].clone();
-                    black_box(writer_map.insert_dirty(key, i));
-                    i = i.wrapping_add(1);
-                }
-            });
-
-            b.iter(|| {
-                let mut sum = 0_u64;
-                let matched = map.for_each_prefix(
-                    b"ab:",
-                    |_, value, _, _| {
-                        sum ^= *value;
-                    },
-                    5_000,
-                );
-                black_box(sum);
-                black_box(matched);
-            });
-
-            stop.store(true, Ordering::Release);
-            writer.join().unwrap();
-        },
-    );
 
     group.finish();
 }
@@ -631,15 +384,104 @@ fn bench_prefix_list_with_advance(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_dirty_write_batch_modes(c: &mut Criterion) {
+    let mut group = c.benchmark_group("live");
+    group.measurement_time(Duration::from_secs(3));
+    group.throughput(Throughput::Elements(1));
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_batch", "strict_repeated_1k"),
+        |b| {
+            let map = CacheLogMap::<Vec<u8>, u64>::new(CacheLogConfig::new(1 << 15, 1 << 15, 16));
+            let keys = (0_u64..64)
+                .map(|i| format!("hot:{i:04}").into_bytes())
+                .collect::<Vec<_>>();
+            let mut seq = 0_u64;
+            b.iter(|| {
+                let mut batch = Vec::with_capacity(1_000);
+                for i in 0..1_000 {
+                    let key = keys[i % keys.len()].clone();
+                    batch.push((key, seq));
+                    seq = seq.wrapping_add(1);
+                }
+                let ids = map.insert_dirty_batch(batch);
+                black_box(ids.len());
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_batch", "coalesced_repeated_1k"),
+        |b| {
+            let cfg = CacheLogConfig::new(1 << 15, 1 << 15, 16)
+                .with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+            let map = CacheLogMap::<Vec<u8>, u64>::new(cfg);
+            let keys = (0_u64..64)
+                .map(|i| format!("hot:{i:04}").into_bytes())
+                .collect::<Vec<_>>();
+            let mut seq = 0_u64;
+            b.iter(|| {
+                let mut batch = Vec::with_capacity(1_000);
+                for i in 0..1_000 {
+                    let key = keys[i % keys.len()].clone();
+                    batch.push((key, seq));
+                    seq = seq.wrapping_add(1);
+                }
+                let ids = map.insert_dirty_batch(batch);
+                black_box(ids.len());
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_batch", "strict_unique_1k"),
+        |b| {
+            let map = CacheLogMap::<Vec<u8>, u64>::new(CacheLogConfig::new(1 << 15, 1 << 15, 16));
+            let mut seq = 0_u64;
+            b.iter(|| {
+                let mut batch = Vec::with_capacity(1_000);
+                for _ in 0..1_000 {
+                    let key = format!("uniq:{seq:016}").into_bytes();
+                    batch.push((key, seq));
+                    seq = seq.wrapping_add(1);
+                }
+                let ids = map.insert_dirty_batch(batch);
+                black_box(ids.len());
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_batch", "coalesced_unique_1k"),
+        |b| {
+            let cfg = CacheLogConfig::new(1 << 15, 1 << 15, 16)
+                .with_dirty_write_mode(DirtyWriteMode::CoalescedMap);
+            let map = CacheLogMap::<Vec<u8>, u64>::new(cfg);
+            let mut seq = 0_u64;
+            b.iter(|| {
+                let mut batch = Vec::with_capacity(1_000);
+                for _ in 0..1_000 {
+                    let key = format!("uniq:{seq:016}").into_bytes();
+                    batch.push((key, seq));
+                    seq = seq.wrapping_add(1);
+                }
+                let ids = map.insert_dirty_batch(batch);
+                black_box(ids.len());
+            });
+        },
+    );
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
-    bench_prefix_dirty_write,
     bench_dirty_write,
     bench_dirty_read,
+    bench_dirty_write_batch_modes,
     bench_borrowed_lookup,
     bench_dirty_read_under_write,
     bench_mixed_rw,
-    bench_prefix_list,
     bench_prefix_list_with_advance,
     bench_stale_cycle,
     bench_stale_breakdown

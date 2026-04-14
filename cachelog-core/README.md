@@ -50,3 +50,24 @@ The sibling crates remain outside the proof root on purpose:
   for the semantic state machine and adds JSON/TLA adapters.
 - [`cachelog-rs`](/home/user/repos/tableflip-rs) is validated against the core model by tests
   and model alignment, not by direct Creusot verification.
+
+
+## Kani Workflow
+
+`cachelog-core` also contains bounded model-checking harnesses under `src/kani.rs` (guarded by `cfg(kani)`).
+
+Run all Kani harnesses from this directory:
+
+```bash
+cd /home/user/repos/tableflip-rs/cachelog-core
+cargo kani
+```
+
+Run one targeted harness:
+
+```bash
+cd /home/user/repos/tableflip-rs/cachelog-core
+cargo kani --harness stale_drop_does_not_remove_newer_visible_write
+```
+
+Current harnesses focus on strict-mode stale-flush/write-order safety and durable replay behavior.
