@@ -8,7 +8,7 @@ use std::thread;
 
 use cachelog::{
     BytePrefixMap, CacheLogConfig, CacheLogMap, DirtyAllocMode, DirtyQueueBackend, DirtyWriteMode,
-    EntryState, VisibleRef,
+    EntryState, FlushWork, VisibleRef,
 };
 
 fn read_triplet<K, Q, V>(map: &CacheLogMap<K, V>, key: &Q) -> Option<(V, EntryState, VisibleRef)>
@@ -699,4 +699,46 @@ fn coalesced_dirty_log_len_tracks_visible_dirty_backlog() {
     assert_eq!(map.dirty_log_len(), 0);
     assert!(map.read(&"a".to_owned(), |_, v, s, r| (*v, s, r)).is_none());
     assert!(map.read(&"b".to_owned(), |_, v, s, r| (*v, s, r)).is_none());
+}
+
+#[test]
+fn wait_flush_work_blocks_and_returns_batch_when_data_arrives() {
+    let map = Arc::new(CacheLogMap::<u64, u64>::new(CacheLogConfig::new(
+        64, 64, 64,
+    )));
+    let map_wait = Arc::clone(&map);
+
+    let waiter = thread::spawn(move || map_wait.wait_flush_work(16));
+
+    // Let the waiter park on queue recv.
+    thread::sleep(std::time::Duration::from_millis(5));
+    let id = map.insert_dirty(7, 77);
+
+    let work = waiter.join().expect("waiter join");
+    match work {
+        FlushWork::Batch(batch) => {
+            assert_eq!(batch.len(), 1);
+            let record = batch.iter().next().expect("batch record");
+            assert_eq!(record.id, id);
+            assert_eq!(record.key, 7);
+            assert_eq!(record.value, 77);
+        }
+        FlushWork::ForceFlush => panic!("expected dirty batch, got force flush"),
+    }
+}
+
+#[test]
+fn force_flush_signal_wakes_waiter_without_dirty_data() {
+    let map = Arc::new(CacheLogMap::<u64, u64>::new(CacheLogConfig::new(
+        64, 64, 64,
+    )));
+    let map_wait = Arc::clone(&map);
+
+    let waiter = thread::spawn(move || map_wait.wait_flush_work(16));
+
+    thread::sleep(std::time::Duration::from_millis(5));
+    map.signal_force_flush();
+
+    let work = waiter.join().expect("waiter join");
+    assert!(matches!(work, FlushWork::ForceFlush));
 }

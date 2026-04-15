@@ -1,9 +1,16 @@
+use crate::entry::FlushBatch;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum DirtyAllocMode {
     #[default]
     OwnedPerWrite,
     PooledVec,
     ChunkedArena,
+}
+
+pub(crate) enum FlushWork<K, V> {
+    Batch(FlushBatch<K, V>),
+    ForceFlush,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
@@ -18,7 +25,7 @@ pub enum DirtyQueueBackend {
 mod imp {
     use std::collections::VecDeque;
 
-    use crate::dirty_mode::{DirtyAllocMode, DirtyQueueBackend};
+    use crate::dirty_mode::{DirtyAllocMode, DirtyQueueBackend, FlushWork};
     use crate::entry::{DirtyRecord, FlushBatch, WriteId};
     use crate::sync::{Arc, Mutex, lock, new_mutex};
 
@@ -33,6 +40,8 @@ mod imp {
         fn append(&self, key: K, value: V) -> Self::VisibleDirty;
         fn append_batch(&self, entries: Vec<(K, V)>) -> Vec<Self::VisibleDirty>;
         fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
+        fn wait_for_flush_work(&self, limit: usize) -> FlushWork<K, V>;
+        fn signal_force_flush(&self);
         fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
         fn len(&self) -> usize;
 
@@ -50,6 +59,7 @@ mod imp {
         next_id: WriteId,
         entries: VecDeque<Arc<DirtyRecord<K, V>>>,
         inflight: Option<FlushBatch<K, V>>,
+        force_flush_pending: bool,
     }
 
     impl<K, V> DirtyLog<K, V> {
@@ -58,6 +68,7 @@ mod imp {
                 next_id: 0,
                 entries: VecDeque::with_capacity(capacity.max(1)),
                 inflight: None,
+                force_flush_pending: false,
             }
         }
     }
@@ -123,6 +134,35 @@ mod imp {
             batch
         }
 
+        fn wait_for_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+            let mut inner = lock(&self.inner);
+            if let Some(batch) = &inner.inflight {
+                return FlushWork::Batch(batch.clone());
+            }
+            if inner.force_flush_pending {
+                inner.force_flush_pending = false;
+                return FlushWork::ForceFlush;
+            }
+            let mut entries = Vec::with_capacity(limit);
+            while entries.len() < limit {
+                let Some(record) = inner.entries.pop_front() else {
+                    break;
+                };
+                entries.push(record);
+            }
+            let batch = FlushBatch::new(entries);
+            if !batch.is_empty() {
+                inner.inflight = Some(batch.clone());
+                return FlushWork::Batch(batch);
+            }
+            FlushWork::Batch(batch)
+        }
+
+        fn signal_force_flush(&self) {
+            let mut inner = lock(&self.inner);
+            inner.force_flush_pending = true;
+        }
+
         fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
             let mut inner = lock(&self.inner);
             let Some(inflight) = &inner.inflight else {
@@ -162,6 +202,60 @@ mod imp {
             lock(&self.inner).next_id
         }
     }
+
+    impl OrderedFifoDirty<Vec<u8>, Vec<u8>> {
+        pub(crate) fn append_batch_borrowed<'a, I>(
+            &self,
+            entries: I,
+        ) -> Vec<Arc<DirtyRecord<Vec<u8>, Vec<u8>>>>
+        where
+            I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+        {
+            let iter = entries.into_iter();
+            let (lower, upper) = iter.size_hint();
+            let mut inner = lock(&self.inner);
+            let mut out = Vec::with_capacity(upper.unwrap_or(lower));
+            for (key, value) in iter {
+                let id = inner.next_id;
+                inner.next_id = inner.next_id.wrapping_add(1);
+                let record = Arc::new(DirtyRecord {
+                    id,
+                    key: key.to_vec(),
+                    value: value.to_vec(),
+                });
+                inner.entries.push_back(record.clone());
+                out.push(record);
+            }
+            out
+        }
+    }
+
+    impl OrderedFifoDirty<Vec<u8>, Arc<Vec<u8>>> {
+        pub(crate) fn append_batch_borrowed<'a, I>(
+            &self,
+            entries: I,
+        ) -> Vec<Arc<DirtyRecord<Vec<u8>, Arc<Vec<u8>>>>>
+        where
+            I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+        {
+            let iter = entries.into_iter();
+            let (lower, upper) = iter.size_hint();
+            let mut inner = lock(&self.inner);
+            let mut out = Vec::with_capacity(upper.unwrap_or(lower));
+            for (key, value) in iter {
+                let id = inner.next_id;
+                inner.next_id = inner.next_id.wrapping_add(1);
+                let record = Arc::new(DirtyRecord {
+                    id,
+                    key: key.to_vec(),
+                    value: Arc::new(value.to_vec()),
+                });
+                inner.entries.push_back(record.clone());
+                out.push(record);
+            }
+            out
+        }
+    }
 }
 
 #[cfg(not(feature = "loom"))]
@@ -172,7 +266,7 @@ mod imp {
     use crossbeam_channel as cbch;
     use kanal::{Receiver as KanalReceiver, Sender as KanalSender};
 
-    use crate::dirty_mode::{DirtyAllocMode, DirtyQueueBackend};
+    use crate::dirty_mode::{DirtyAllocMode, DirtyQueueBackend, FlushWork};
     #[cfg(any(test, feature = "loom"))]
     use crate::entry::WriteId;
     use crate::entry::{DirtyRecord, FlushBatch};
@@ -189,6 +283,8 @@ mod imp {
         fn append(&self, key: K, value: V) -> Self::VisibleDirty;
         fn append_batch(&self, entries: Vec<(K, V)>) -> Vec<Self::VisibleDirty>;
         fn flush_batch(&self, limit: usize) -> FlushBatch<K, V>;
+        fn wait_for_flush_work(&self, limit: usize) -> FlushWork<K, V>;
+        fn signal_force_flush(&self);
         fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize;
         fn len(&self) -> usize;
 
@@ -206,6 +302,7 @@ mod imp {
         One(Arc<DirtyRecord<K, V>>),
         BatchVec(Vec<Arc<DirtyRecord<K, V>>>),
         BatchSlice(Box<[Arc<DirtyRecord<K, V>>]>),
+        ForceFlush,
     }
 
     enum DirtyQueue<K, V> {
@@ -270,6 +367,20 @@ mod imp {
             }
         }
 
+        fn send_force_flush(&self) {
+            match self {
+                Self::Kanal { tx, .. } => {
+                    let _ = tx.send(PendingItem::ForceFlush);
+                }
+                Self::Crossbeam { tx, .. } => {
+                    let _ = tx.try_send(PendingItem::ForceFlush);
+                }
+                Self::StdSync { tx, .. } => {
+                    let _ = tx.try_send(PendingItem::ForceFlush);
+                }
+            }
+        }
+
         fn try_recv_item(&self) -> Option<PendingItem<K, V>> {
             match self {
                 Self::Kanal { rx, .. } => match lock(rx).try_recv() {
@@ -279,6 +390,14 @@ mod imp {
                 },
                 Self::Crossbeam { rx, .. } => lock(rx).try_recv().ok(),
                 Self::StdSync { rx, .. } => lock(rx).try_recv().ok(),
+            }
+        }
+
+        fn recv_item(&self) -> Option<PendingItem<K, V>> {
+            match self {
+                Self::Kanal { rx, .. } => lock(rx).recv().ok(),
+                Self::Crossbeam { rx, .. } => lock(rx).recv().ok(),
+                Self::StdSync { rx, .. } => lock(rx).recv().ok(),
             }
         }
     }
@@ -445,6 +564,7 @@ mod imp {
                             staged.push_back(record);
                         }
                     }
+                    PendingItem::ForceFlush => {}
                 }
             }
 
@@ -453,6 +573,41 @@ mod imp {
                 *inflight = Some(batch.clone());
             }
             batch
+        }
+
+        fn wait_for_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+            let batch = self.flush_batch(limit);
+            if !batch.is_empty() {
+                return FlushWork::Batch(batch);
+            }
+
+            loop {
+                let Some(item) = self.queue.recv_item() else {
+                    return FlushWork::ForceFlush;
+                };
+
+                match item {
+                    PendingItem::ForceFlush => return FlushWork::ForceFlush,
+                    PendingItem::One(record) => {
+                        lock(&self.staged).push_back(record);
+                    }
+                    PendingItem::BatchVec(records) => {
+                        lock(&self.staged).extend(records);
+                    }
+                    PendingItem::BatchSlice(records) => {
+                        lock(&self.staged).extend(records.into_vec());
+                    }
+                }
+
+                let batch = self.flush_batch(limit);
+                if !batch.is_empty() {
+                    return FlushWork::Batch(batch);
+                }
+            }
+        }
+
+        fn signal_force_flush(&self) {
+            self.queue.send_force_flush();
         }
 
         fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
@@ -492,6 +647,112 @@ mod imp {
         #[cfg(any(test, feature = "loom"))]
         fn next_write(&self) -> WriteId {
             self.next_id.0.load(Ordering::Relaxed)
+        }
+    }
+
+    impl OrderedFifoDirty<Vec<u8>, Vec<u8>> {
+        pub(crate) fn append_batch_borrowed<'a, I>(
+            &self,
+            entries: I,
+        ) -> Vec<Arc<DirtyRecord<Vec<u8>, Vec<u8>>>>
+        where
+            I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+        {
+            let _guard = lock(&self.append_lock);
+            let iter = entries.into_iter();
+            let (lower, upper) = iter.size_hint();
+            let mut out = Vec::with_capacity(upper.unwrap_or(lower));
+            let mut next_id = self.next_id.0.load(Ordering::Relaxed);
+            for (key, value) in iter {
+                let record = Arc::new(DirtyRecord {
+                    id: next_id,
+                    key: key.to_vec(),
+                    value: value.to_vec(),
+                });
+                next_id = next_id.wrapping_add(1);
+                out.push(record);
+            }
+            let len = out.len();
+            if len == 0 {
+                return out;
+            }
+            self.next_id.0.store(next_id, Ordering::Relaxed);
+
+            match self.alloc_mode {
+                DirtyAllocMode::OwnedPerWrite => {
+                    for record in &out {
+                        self.queue.send_one(record.clone());
+                    }
+                }
+                DirtyAllocMode::PooledVec => {
+                    self.queue.send_batch_vec(out.clone());
+                }
+                DirtyAllocMode::ChunkedArena => {
+                    self.queue.send_batch_slice(out.clone().into_boxed_slice());
+                }
+            }
+            self.pending_len.0.fetch_add(len, Ordering::Relaxed);
+            #[cfg(test)]
+            {
+                let mut shadow = lock(&self.pending_shadow);
+                for record in &out {
+                    shadow.push_back(record.clone());
+                }
+            }
+            out
+        }
+    }
+
+    impl OrderedFifoDirty<Vec<u8>, Arc<Vec<u8>>> {
+        pub(crate) fn append_batch_borrowed<'a, I>(
+            &self,
+            entries: I,
+        ) -> Vec<Arc<DirtyRecord<Vec<u8>, Arc<Vec<u8>>>>>
+        where
+            I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+        {
+            let _guard = lock(&self.append_lock);
+            let iter = entries.into_iter();
+            let (lower, upper) = iter.size_hint();
+            let mut out = Vec::with_capacity(upper.unwrap_or(lower));
+            let mut next_id = self.next_id.0.load(Ordering::Relaxed);
+            for (key, value) in iter {
+                let record = Arc::new(DirtyRecord {
+                    id: next_id,
+                    key: key.to_vec(),
+                    value: Arc::new(value.to_vec()),
+                });
+                next_id = next_id.wrapping_add(1);
+                out.push(record);
+            }
+            let len = out.len();
+            if len == 0 {
+                return out;
+            }
+            self.next_id.0.store(next_id, Ordering::Relaxed);
+
+            match self.alloc_mode {
+                DirtyAllocMode::OwnedPerWrite => {
+                    for record in &out {
+                        self.queue.send_one(record.clone());
+                    }
+                }
+                DirtyAllocMode::PooledVec => {
+                    self.queue.send_batch_vec(out.clone());
+                }
+                DirtyAllocMode::ChunkedArena => {
+                    self.queue.send_batch_slice(out.clone().into_boxed_slice());
+                }
+            }
+            self.pending_len.0.fetch_add(len, Ordering::Relaxed);
+            #[cfg(test)]
+            {
+                let mut shadow = lock(&self.pending_shadow);
+                for record in &out {
+                    shadow.push_back(record.clone());
+                }
+            }
+            out
         }
     }
 }

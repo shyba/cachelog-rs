@@ -36,6 +36,6 @@ mod sync;
 pub use byte_prefix_map::BytePrefixMap;
 pub use dirty_mode::{DirtyAllocMode, DirtyQueueBackend};
 pub use entry::{CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId};
-pub use map::{CacheLogConfig, CacheLogMap, DirtyWriteMode};
+pub use map::{CacheLogConfig, CacheLogMap, DirtyWriteMode, FlushWork};
 #[cfg(feature = "loom")]
 pub use map::{DebugRecord, DebugSnapshot, DebugVisible};

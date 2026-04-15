@@ -474,10 +474,80 @@ fn bench_dirty_write_batch_modes(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_dirty_write_arc_value(c: &mut Criterion) {
+    let mut group = c.benchmark_group("live");
+    group.measurement_time(Duration::from_secs(3));
+    group.throughput(Throughput::Elements(1));
+
+    let cfg = CacheLogConfig::new(1 << 15, 1 << 15, 16);
+    let vec_map = CacheLogMap::<Vec<u8>, Vec<u8>>::new(cfg);
+    let arc_map = CacheLogMap::<Vec<u8>, Arc<Vec<u8>>>::new(cfg);
+    let keys = (0_u64..1024)
+        .map(|i| format!("arc:{i:04}").into_bytes())
+        .collect::<Vec<_>>();
+    let payload_4k = vec![0xA5_u8; 4096];
+    let payload_9b = vec![0xB7_u8; 9];
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_bytes", "vec_borrowed_9b"),
+        |b| {
+            let mut i = 0_usize;
+            b.iter(|| {
+                let key = &keys[i % keys.len()];
+                let id = vec_map.insert_dirty_borrowed(key, &payload_9b);
+                black_box(id);
+                i = i.wrapping_add(1);
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_bytes", "arc_borrowed_9b"),
+        |b| {
+            let mut i = 0_usize;
+            b.iter(|| {
+                let key = &keys[i % keys.len()];
+                let id = arc_map.insert_dirty_borrowed(key, &payload_9b);
+                black_box(id);
+                i = i.wrapping_add(1);
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_bytes", "vec_borrowed_4k"),
+        |b| {
+            let mut i = 0_usize;
+            b.iter(|| {
+                let key = &keys[i % keys.len()];
+                let id = vec_map.insert_dirty_borrowed(key, &payload_4k);
+                black_box(id);
+                i = i.wrapping_add(1);
+            });
+        },
+    );
+
+    group.bench_function(
+        BenchmarkId::new("dirty_write_bytes", "arc_borrowed_4k"),
+        |b| {
+            let mut i = 0_usize;
+            b.iter(|| {
+                let key = &keys[i % keys.len()];
+                let id = arc_map.insert_dirty_borrowed(key, &payload_4k);
+                black_box(id);
+                i = i.wrapping_add(1);
+            });
+        },
+    );
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_dirty_write,
     bench_dirty_read,
+    bench_dirty_write_arc_value,
     bench_dirty_write_batch_modes,
     bench_borrowed_lookup,
     bench_dirty_read_under_write,

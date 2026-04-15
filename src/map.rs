@@ -6,7 +6,9 @@ use std::hash::{BuildHasher, Hash};
 use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
 
-use crate::dirty_mode::{DirtyAllocMode, DirtyMode, DirtyQueueBackend, OrderedFifoDirty};
+use crate::dirty_mode::{
+    DirtyAllocMode, DirtyMode, DirtyQueueBackend, FlushWork as DirtyFlushWork, OrderedFifoDirty,
+};
 use crate::entry::{
     CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId,
 };
@@ -42,6 +44,21 @@ pub enum DirtyWriteMode {
     #[default]
     StrictLog,
     CoalescedMap,
+}
+
+#[derive(Clone, Debug)]
+pub enum FlushWork<K, V> {
+    Batch(FlushBatch<K, V>),
+    ForceFlush,
+}
+
+impl<K, V> FlushWork<K, V> {
+    pub fn as_batch(&self) -> Option<&FlushBatch<K, V>> {
+        match self {
+            Self::Batch(batch) => Some(batch),
+            Self::ForceFlush => None,
+        }
+    }
 }
 
 impl CacheLogConfig {
@@ -405,6 +422,29 @@ where
         }
     }
 
+    pub fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => match self.dirty_mode.wait_for_flush_work(limit) {
+                DirtyFlushWork::Batch(batch) => FlushWork::Batch(batch),
+                DirtyFlushWork::ForceFlush => FlushWork::ForceFlush,
+            },
+            DirtyWriteMode::CoalescedMap => {
+                let batch = self.flush_batch_coalesced(limit);
+                if batch.is_empty() {
+                    FlushWork::ForceFlush
+                } else {
+                    FlushWork::Batch(batch)
+                }
+            }
+        }
+    }
+
+    pub fn signal_force_flush(&self) {
+        if matches!(self.dirty_write_mode, DirtyWriteMode::StrictLog) {
+            self.dirty_mode.signal_force_flush();
+        }
+    }
+
     pub fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
         match self.dirty_write_mode {
             DirtyWriteMode::StrictLog => {
@@ -704,6 +744,82 @@ where
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+impl<H> CacheLogMap<Vec<u8>, Vec<u8>, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.insert_dirty(key.to_vec(), value.to_vec())
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => {
+                let records = self.dirty_mode.append_batch_borrowed(entries);
+                if records.is_empty() {
+                    return 0;
+                }
+
+                let _reserved = self.visible.reserve(records.len());
+                let len = records.len();
+                for record in records {
+                    self.publish_dirty_record(record);
+                }
+                len
+            }
+            DirtyWriteMode::CoalescedMap => {
+                let mut count = 0_usize;
+                for (key, value) in entries {
+                    let _ = self.publish_coalesced_write(key.to_vec(), value.to_vec());
+                    count = count.saturating_add(1);
+                }
+                count
+            }
+        }
+    }
+}
+
+impl<H> CacheLogMap<Vec<u8>, Arc<Vec<u8>>, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.insert_dirty(key.to_vec(), Arc::new(value.to_vec()))
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => {
+                let records = self.dirty_mode.append_batch_borrowed(entries);
+                if records.is_empty() {
+                    return 0;
+                }
+
+                let _reserved = self.visible.reserve(records.len());
+                let len = records.len();
+                for record in records {
+                    self.publish_dirty_record(record);
+                }
+                len
+            }
+            DirtyWriteMode::CoalescedMap => {
+                let mut count = 0_usize;
+                for (key, value) in entries {
+                    let _ = self.publish_coalesced_write(key.to_vec(), Arc::new(value.to_vec()));
+                    count = count.saturating_add(1);
+                }
+                count
             }
         }
     }
