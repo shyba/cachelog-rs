@@ -1,11 +1,13 @@
 #![cfg(feature = "loom")]
 
 use std::collections::BTreeSet;
+use std::hash::BuildHasher;
 use std::sync::{Mutex, OnceLock};
 
 use loom::model::Builder;
 
-use cachelog::{CacheLogMap, DebugSnapshot, DebugVisible, EntryState, VisibleRef};
+use cachelog::low_level::VisibleRef;
+use cachelog::{CacheLogMap, DebugSnapshot, DebugVisible, EntryState};
 
 fn serializer() -> &'static Mutex<()> {
     static SERIALIZER: OnceLock<Mutex<()>> = OnceLock::new();
@@ -40,23 +42,59 @@ pub fn run_exhaustive_model(
 
 #[allow(dead_code)]
 pub fn assert_public_consistency(map: &CacheLogMap<usize, usize>, key: usize) {
-    let visible = map.visible_ref(&key);
-    let read_triplet = map.read(&key, |_, value, state, visible| (*value, state, visible));
+    let read_pair = map.read(&key, |_, value, state| (*value, state));
+    let get_pair = map.get_cloned(&key);
+    let visible_ref = map.low_level().visible_ref(&key);
+    let read_full = map
+        .low_level()
+        .read_full(&key, |_, value, state, visible| (*value, state, visible));
 
-    match (visible, read_triplet) {
+    assert_eq!(
+        read_pair, get_pair,
+        "read/get_cloned mismatch for key {key}: {read_pair:?} vs {get_pair:?}"
+    );
+
+    match (visible_ref, read_full) {
         (None, None) => {}
         (Some(VisibleRef::Dirty(id1)), Some((_, EntryState::Dirty, VisibleRef::Dirty(id2)))) => {
-            assert_eq!(id1, id2, "visible_ref/read dirty id mismatch for key {key}");
+            assert_eq!(
+                id1, id2,
+                "visible_ref/read_full dirty id mismatch for key {key}"
+            );
         }
         (Some(VisibleRef::Clean(id1)), Some((_, EntryState::Clean, VisibleRef::Clean(id2)))) => {
-            assert_eq!(id1, id2, "visible_ref/read clean id mismatch for key {key}");
+            assert_eq!(
+                id1, id2,
+                "visible_ref/read_full clean id mismatch for key {key}"
+            );
         }
-        (left, right) => panic!("public API mismatch for key {key}: {left:?} vs {right:?}"),
+        (left, right) => {
+            panic!("visible_ref/read_full mismatch for key {key}: {left:?} vs {right:?}")
+        }
     }
 
     assert_eq!(
         map.contains(&key),
-        read_triplet.is_some(),
+        read_pair.is_some(),
+        "contains/read mismatch for key {key}"
+    );
+}
+
+#[allow(dead_code)]
+pub fn assert_coalesced_public_consistency<H>(map: &CacheLogMap<usize, usize, H>, key: usize)
+where
+    H: BuildHasher + Clone,
+{
+    let read_pair = map.read(&key, |_, value, state| (*value, state));
+    let get_pair = map.get_cloned(&key);
+
+    assert_eq!(
+        read_pair, get_pair,
+        "read/get_cloned mismatch for key {key}: {read_pair:?} vs {get_pair:?}"
+    );
+    assert_eq!(
+        map.contains(&key),
+        read_pair.is_some(),
         "contains/read mismatch for key {key}"
     );
 }

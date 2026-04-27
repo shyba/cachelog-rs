@@ -13,6 +13,7 @@ name = "cachelog"
 
 [features]
 default = []
+dev-tools = []
 loom = ["scc/loom", "dep:loom"]
 
 [dev-dependencies]
@@ -25,12 +26,19 @@ proptest = "1"
 [[bench]]
 name = "live"
 harness = false
+required-features = ["dev-tools"]
+
+[[bin]]
+name = "coalesced_hotpath"
+path = "src/bin/coalesced_hotpath.rs"
+required-features = ["dev-tools"]
 
 [dependencies]
+bytes = "1"
 ahash = "0.8"
+arc-swap = "1"
 crossbeam-channel = "0.5"
 crossbeam-queue = "0.3"
-kanal = "0.1"
 loom = { version = "0.7", optional = true }
 parking_lot = "0.12"
 qp-trie = "0.8.2"

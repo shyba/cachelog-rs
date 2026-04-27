@@ -5,7 +5,7 @@ mod loom_support;
 use loom::sync::Arc;
 use loom::thread;
 
-use cachelog::{CacheLogConfig, CacheLogMap, EntryState, VisibleRef};
+use cachelog::{CacheLogConfig, CacheLogMap, EntryState};
 use loom_support::{STACK, assert_public_consistency, assert_snapshot_legal, run_exhaustive_model};
 
 const SMALL_CONFIGS: [CacheLogConfig; 4] = [
@@ -26,8 +26,8 @@ fn exhaustive_newer_dirty_survives_flush_of_older() {
             let setup = thread::Builder::new()
                 .stack_size(STACK)
                 .spawn(move || {
-                    m.insert_dirty(1, 10);
-                    m.flush_batch(1)
+                    m.low_level().insert_dirty(1, 10);
+                    m.low_level().flush_batch(1)
                 })
                 .unwrap();
             let batch = setup.join().unwrap();
@@ -36,7 +36,7 @@ fn exhaustive_newer_dirty_survives_flush_of_older() {
             let writer = thread::Builder::new()
                 .stack_size(STACK)
                 .spawn(move || {
-                    m.insert_dirty(1, 20);
+                    m.low_level().insert_dirty(1, 20);
                 })
                 .unwrap();
 
@@ -45,27 +45,26 @@ fn exhaustive_newer_dirty_survives_flush_of_older() {
             let flusher = thread::Builder::new()
                 .stack_size(STACK)
                 .spawn(move || {
-                    m2.mark_flushed(&b);
+                    m2.low_level().mark_flushed(&b);
                 })
                 .unwrap();
 
             writer.join().unwrap();
             flusher.join().unwrap();
 
-            let result = map.read(&1, |_, v, s, r| (*v, s, r));
-            if let Some((val, state, vis)) = result {
+            let result = map.read(&1, |_, v, s| (*v, s));
+            if let Some((val, state)) = result {
                 assert_eq!(val, 20);
                 assert_eq!(state, EntryState::Dirty);
-                assert!(matches!(vis, VisibleRef::Dirty(_)));
             }
             assert_public_consistency(&map, 1);
-            assert_snapshot_legal(&map.debug_snapshot());
+            assert_snapshot_legal(&map.low_level().debug_snapshot());
             loop {
-                let batch = map.flush_batch(8);
+                let batch = map.low_level().flush_batch(8);
                 if batch.is_empty() {
                     break;
                 }
-                let _ = map.mark_flushed(&batch);
+                let _ = map.low_level().mark_flushed(&batch);
             }
             assert_eq!(map.dirty_log_len(), 0);
         });
@@ -83,7 +82,7 @@ fn exhaustive_same_key_concurrent_writers_leave_legal_state() {
         let writer1 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m1.insert_dirty(1, 10);
+                m1.low_level().insert_dirty(1, 10);
             })
             .unwrap();
 
@@ -91,27 +90,26 @@ fn exhaustive_same_key_concurrent_writers_leave_legal_state() {
         let writer2 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m2.insert_dirty(1, 20);
+                m2.low_level().insert_dirty(1, 20);
             })
             .unwrap();
 
         writer1.join().unwrap();
         writer2.join().unwrap();
 
-        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        let result = map.read(&1, |_, v, s| (*v, s));
         assert!(result.is_some());
-        let (val, state, vis) = result.unwrap();
+        let (val, state) = result.unwrap();
         assert!(matches!(val, 10 | 20));
         assert_eq!(state, EntryState::Dirty);
-        assert!(matches!(vis, VisibleRef::Dirty(_)));
         assert_public_consistency(&map, 1);
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
         loop {
-            let batch = map.flush_batch(8);
+            let batch = map.low_level().flush_batch(8);
             if batch.is_empty() {
                 break;
             }
-            let _ = map.mark_flushed(&batch);
+            let _ = map.low_level().mark_flushed(&batch);
         }
         assert_eq!(map.dirty_log_len(), 0);
     });

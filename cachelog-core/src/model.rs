@@ -16,6 +16,10 @@ pub type ValueId = usize;
 pub type WriteId = usize;
 pub type CacheId = usize;
 
+// `cachelog-core` models the strict id-bearing surface. Coalesced no-id
+// batches are common latest-value semantics, not a second strict-log model.
+// See `model-cachelog/formal/PersistBatchBoundary.md` for the current mapping.
+
 #[cfg_attr(all(feature = "serde", not(creusot)), derive(Serialize, Deserialize))]
 #[cfg_attr(creusot, derive(DeepModel))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -216,7 +220,7 @@ pub struct InvariantReport {
 impl InvariantReport {
     #[cfg_attr(feature = "creusot", ensures(result == (self.failures@.len() == 0)))]
     pub fn is_ok(&self) -> bool {
-        self.failures.len() == 0
+        self.failures.is_empty()
     }
 }
 
@@ -687,14 +691,13 @@ impl ModelState {
     pub fn dirty_refs_live(&self, config: ModelConfig) -> bool {
         let mut index = 0;
         while index < self.visible.len() {
-            if let VisibleRef::Dirty(id) = self.visible[index] {
-                if !config.valid_write(id)
+            if let VisibleRef::Dirty(id) = self.visible[index]
+                && (!config.valid_write(id)
                     || !self.write_store[id].present
                     || self.write_store[id].id != Some(id)
-                    || self.write_store[id].key != index
-                {
-                    return false;
-                }
+                    || self.write_store[id].key != index)
+            {
+                return false;
             }
             index += 1;
         }
@@ -706,13 +709,12 @@ impl ModelState {
     pub fn clean_refs_key_consistent(&self, config: ModelConfig) -> bool {
         let mut index = 0;
         while index < self.visible.len() {
-            if let VisibleRef::Clean(id) = self.visible[index] {
-                if config.valid_cache(id)
-                    && self.cache_store[id].present
-                    && self.cache_store[id].key != index
-                {
-                    return false;
-                }
+            if let VisibleRef::Clean(id) = self.visible[index]
+                && config.valid_cache(id)
+                && self.cache_store[id].present
+                && self.cache_store[id].key != index
+            {
+                return false;
             }
             index += 1;
         }
@@ -878,54 +880,51 @@ impl From<&ModelState> for ComparableState {
         let write_store = state
             .write_store
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present dirty record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present dirty record has id");
+                (
+                    id,
+                    ComparableDirtyRecord {
                         id,
-                        ComparableDirtyRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
         let write_hist = state
             .write_hist
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present hist record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present hist record has id");
+                (
+                    id,
+                    ComparableDirtyRecord {
                         id,
-                        ComparableDirtyRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
         let cache_store = state
             .cache_store
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present clean record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present clean record has id");
+                (
+                    id,
+                    ComparableCleanRecord {
                         id,
-                        ComparableCleanRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
@@ -933,17 +932,16 @@ impl From<&ModelState> for ComparableState {
             .durable
             .iter()
             .enumerate()
-            .filter_map(|(key, value)| {
-                (value.present && value.seq.is_some()).then(|| {
-                    (
+            .filter(|(_, value)| value.present && value.seq.is_some())
+            .map(|(key, value)| {
+                (
+                    key,
+                    ComparableDurableValue {
                         key,
-                        ComparableDurableValue {
-                            key,
-                            value: value.value,
-                            seq: value.seq.expect("present durable has seq"),
-                        },
-                    )
-                })
+                        value: value.value,
+                        seq: value.seq.expect("present durable has seq"),
+                    },
+                )
             })
             .collect();
 

@@ -10,6 +10,9 @@ use crate::{
     ValueId, VisibleRef, WriteId,
 };
 
+// These proofs cover the strict id-bearing model. Coalesced no-id batches are
+// common latest-value semantics; see `aidocs/015_coalesced_invariant_split.md`.
+
 #[logic(open)]
 pub fn valid_config(cfg: ModelConfig) -> bool {
     pearlite! {

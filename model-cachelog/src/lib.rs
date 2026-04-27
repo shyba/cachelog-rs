@@ -3,37 +3,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 
 pub use cachelog_core::{
-    CacheId, CleanRecord, DurableValue, InvariantReport, KeyId, ModelConfig, ModelError,
+    CacheId, CleanRecord, ComparableCleanRecord, ComparableDirtyRecord, ComparableDurableValue,
+    ComparableVisibleRef, DurableValue, InvariantReport, KeyId, ModelConfig, ModelError,
     ModelState, ModelStep, ValueId, VisibleRef, WriteId,
 };
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ComparableDirtyRecord {
-    pub id: WriteId,
-    pub key: KeyId,
-    pub value: ValueId,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ComparableCleanRecord {
-    pub id: CacheId,
-    pub key: KeyId,
-    pub value: ValueId,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ComparableDurableValue {
-    pub key: KeyId,
-    pub value: ValueId,
-    pub seq: WriteId,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "id")]
-pub enum ComparableVisibleRef {
-    Dirty(WriteId),
-    Clean(CacheId),
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ComparableState {
@@ -67,54 +40,51 @@ impl From<&ModelState> for ComparableState {
         let write_store = state
             .write_store
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present dirty record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present dirty record has id");
+                (
+                    id,
+                    ComparableDirtyRecord {
                         id,
-                        ComparableDirtyRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
         let write_hist = state
             .write_hist
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present hist record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present hist record has id");
+                (
+                    id,
+                    ComparableDirtyRecord {
                         id,
-                        ComparableDirtyRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
         let cache_store = state
             .cache_store
             .iter()
-            .filter_map(|record| {
-                (record.present && record.id.is_some()).then(|| {
-                    let id = record.id.expect("present clean record has id");
-                    (
+            .filter(|record| record.present && record.id.is_some())
+            .map(|record| {
+                let id = record.id.expect("present clean record has id");
+                (
+                    id,
+                    ComparableCleanRecord {
                         id,
-                        ComparableCleanRecord {
-                            id,
-                            key: record.key,
-                            value: record.value,
-                        },
-                    )
-                })
+                        key: record.key,
+                        value: record.value,
+                    },
+                )
             })
             .collect();
 
@@ -122,17 +92,16 @@ impl From<&ModelState> for ComparableState {
             .durable
             .iter()
             .enumerate()
-            .filter_map(|(key, value)| {
-                (value.present && value.seq.is_some()).then(|| {
-                    (
+            .filter(|(_, value)| value.present && value.seq.is_some())
+            .map(|(key, value)| {
+                (
+                    key,
+                    ComparableDurableValue {
                         key,
-                        ComparableDurableValue {
-                            key,
-                            value: value.value,
-                            seq: value.seq.expect("present durable has seq"),
-                        },
-                    )
-                })
+                        value: value.value,
+                        seq: value.seq.expect("present durable has seq"),
+                    },
+                )
             })
             .collect();
 

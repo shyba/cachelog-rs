@@ -5,13 +5,18 @@ use std::collections::hash_map::RandomState;
 use std::hash::BuildHasher;
 use std::hash::{Hash, Hasher};
 
-use kanal::{Receiver, Sender};
 use parking_lot::{Mutex, RwLock};
 use qp_trie::Trie;
 
+use crossbeam_channel::{Receiver, Sender};
+
 #[cfg(not(feature = "loom"))]
+use crate::background_flush::BackgroundFlushService;
+use crate::low_level::{CacheId, FlushBatch, VisibleRef, WriteId};
 use crate::sync::Arc;
-use crate::{CacheId, CacheLogConfig, CacheLogMap, EntryState, FlushBatch, VisibleRef, WriteId};
+#[cfg(not(feature = "loom"))]
+use crate::{BackgroundFlushConfig, BackgroundFlushHandle};
+use crate::{CacheLogConfig, CacheLogMap, EntryState, PersistBatch};
 
 #[derive(Clone, Debug)]
 struct PrefixKey {
@@ -83,12 +88,23 @@ impl Hash for PrefixKey {
 ///
 /// Writers enqueue keys quickly; callers can advance trie state explicitly via
 /// [`advance_trie`] from a flusher/maintenance thread when idle.
+///
+/// Raw mutable access to the wrapped [`CacheLogMap`] is intentionally not
+/// exposed, because writes must flow through this wrapper to keep prefix scans
+/// in sync.
+///
+/// ```compile_fail
+/// use cachelog::{BytePrefixMap, CacheLogConfig};
+///
+/// let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+/// map.inner().insert_dirty(b"ab:001".to_vec(), 1);
+/// ```
 pub struct BytePrefixMap<V, H = RandomState>
 where
     H: BuildHasher + Clone,
 {
-    inner: CacheLogMap<Vec<u8>, V, H>,
-    prefix_trie: RwLock<Trie<PrefixKey, ()>>,
+    inner: Arc<CacheLogMap<Vec<u8>, V, H>>,
+    prefix_trie: Arc<RwLock<Trie<PrefixKey, ()>>>,
     updates_tx: Sender<PrefixKey>,
     updates_rx: Mutex<Receiver<PrefixKey>>,
 }
@@ -104,17 +120,13 @@ where
     H: BuildHasher + Clone,
 {
     pub fn with_hasher(config: CacheLogConfig, build_hasher: H) -> Self {
-        let (updates_tx, updates_rx) = kanal::unbounded();
+        let (updates_tx, updates_rx) = crossbeam_channel::unbounded();
         Self {
-            inner: CacheLogMap::with_hasher(config, build_hasher),
-            prefix_trie: RwLock::new(Trie::new()),
+            inner: Arc::new(CacheLogMap::with_hasher(config, build_hasher)),
+            prefix_trie: Arc::new(RwLock::new(Trie::new())),
             updates_tx,
             updates_rx: Mutex::new(updates_rx),
         }
-    }
-
-    pub fn inner(&self) -> &CacheLogMap<Vec<u8>, V, H> {
-        &self.inner
     }
 
     pub fn visible_len(&self) -> usize {
@@ -132,14 +144,45 @@ where
     pub fn read<R>(
         &self,
         key: &[u8],
-        reader: impl FnOnce(&Vec<u8>, &V, EntryState, VisibleRef) -> R,
+        reader: impl FnOnce(&Vec<u8>, &V, EntryState) -> R,
     ) -> Option<R> {
         self.inner.read(key, reader)
     }
 
+    pub fn read_full<R>(
+        &self,
+        key: &[u8],
+        reader: impl FnOnce(&Vec<u8>, &V, EntryState, VisibleRef) -> R,
+    ) -> Option<R> {
+        self.inner.low_level().read_full(key, reader)
+    }
+
+    pub fn put(&self, key: Vec<u8>, value: V) {
+        let prefix_key = PrefixKey::new(key.clone());
+        self.inner.put(key, value);
+        let _ = self.updates_tx.send(prefix_key);
+    }
+
+    pub fn put_batch(&self, entries: Vec<(Vec<u8>, V)>) -> usize {
+        if entries.is_empty() {
+            return 0;
+        }
+
+        let mut prefix_keys = Vec::with_capacity(entries.len());
+        for (key, _) in &entries {
+            prefix_keys.push(PrefixKey::new(key.clone()));
+        }
+
+        let written = self.inner.put_batch(entries);
+        for prefix_key in prefix_keys {
+            let _ = self.updates_tx.send(prefix_key);
+        }
+        written
+    }
+
     pub fn insert_dirty(&self, key: Vec<u8>, value: V) -> WriteId {
         let prefix_key = PrefixKey::new(key.clone());
-        let id = self.inner.insert_dirty(key, value);
+        let id = self.inner.low_level().insert_dirty(key, value);
         let _ = self.updates_tx.send(prefix_key);
         id
     }
@@ -157,12 +200,69 @@ where
         inserted
     }
 
+    /// Acquire a low-level id-bearing flush batch from the wrapped cachelog.
     pub fn flush_batch(&self, limit: usize) -> FlushBatch<Vec<u8>, V> {
-        self.inner.flush_batch(limit)
+        self.inner.low_level().flush_batch(limit)
     }
 
+    /// Flush pending dirty data through the common persist callback surface.
+    pub fn with_flush_batch<E>(
+        &self,
+        limit: usize,
+        persist: impl FnOnce(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let batch = self.flush_batch(limit.max(1));
+        if batch.is_empty() {
+            return Ok(0);
+        }
+        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+        persist(&persist_batch)?;
+        Ok(self.mark_flushed(&batch))
+    }
+
+    /// Repeatedly flush pending dirty data through the common persist callback
+    /// surface until no backlog remains.
+    pub fn flush_now<E>(
+        &self,
+        limit: usize,
+        mut persist: impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let mut total = 0_usize;
+        loop {
+            let batch = self.flush_batch(limit.max(1));
+            if batch.is_empty() {
+                return Ok(total);
+            }
+            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+            persist(&persist_batch)?;
+            total += self.mark_flushed(&batch);
+        }
+    }
+
+    /// Flush pending dirty data through the common persist callback surface,
+    /// then run a scan that must agree with persisted state.
+    pub fn with_persisted_scan<R, E>(
+        &self,
+        flush_limit: usize,
+        persist: impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+        scan: impl FnOnce() -> Result<R, E>,
+    ) -> Result<R, E> {
+        let _ = self.flush_now(flush_limit, persist)?;
+        scan()
+    }
+
+    /// Complete a low-level id-bearing flush batch previously acquired via
+    /// [`flush_batch`].
     pub fn mark_flushed(&self, batch: &FlushBatch<Vec<u8>, V>) -> usize {
-        let marked = self.inner.mark_flushed(batch);
+        Self::mark_flushed_inner(&self.inner, &self.prefix_trie, batch)
+    }
+
+    fn mark_flushed_inner(
+        inner: &CacheLogMap<Vec<u8>, V, H>,
+        prefix_trie: &RwLock<Trie<PrefixKey, ()>>,
+        batch: &FlushBatch<Vec<u8>, V>,
+    ) -> usize {
+        let marked = inner.low_level().mark_flushed(batch);
         if marked == 0 {
             return 0;
         }
@@ -176,9 +276,9 @@ where
             return marked;
         }
 
-        let mut trie = self.prefix_trie.write();
+        let mut trie = prefix_trie.write();
         for key in candidates {
-            if self.inner.read(key.as_slice(), |_, _, _, _| ()).is_none() {
+            if inner.read(key.as_slice(), |_, _, _| ()).is_none() {
                 trie.remove(key.as_slice());
             }
         }
@@ -198,7 +298,7 @@ where
         let mut drained = Vec::with_capacity(max_items.min(1024));
         while drained.len() < max_items {
             match rx.try_recv() {
-                Ok(Some(key)) => drained.push(key),
+                Ok(key) => drained.push(key),
                 _ => break,
             }
         }
@@ -246,7 +346,7 @@ where
         for key in self.snapshot_prefix_keys(prefix, limit) {
             if self
                 .inner
-                .read(key.as_slice(), |k, _, _, _| reader(k))
+                .read(key.as_slice(), |k, _, _| reader(k))
                 .is_some()
             {
                 matched += 1;
@@ -258,26 +358,113 @@ where
     pub fn list_prefix<R>(
         &self,
         prefix: &[u8],
-        mut reader: impl FnMut(&Vec<u8>, &V, EntryState, VisibleRef) -> R,
+        mut reader: impl FnMut(&Vec<u8>, &V, EntryState) -> R,
         limit: usize,
     ) -> Vec<R> {
         let keys = self.snapshot_prefix_keys(prefix, limit);
         let mut out = Vec::with_capacity(keys.len());
         for key in keys {
-            if let Some(item) = self
-                .inner
-                .read(key.as_slice(), |k, v, s, vr| reader(k, v, s, vr))
-            {
+            if let Some(item) = self.inner.read(key.as_slice(), |k, v, s| reader(k, v, s)) {
                 out.push(item);
             }
         }
         out
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush(
+        &self,
+        config: BackgroundFlushConfig,
+        persist: impl Fn(&PersistBatch<Vec<u8>, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        self.start_background_flush_with_config(config, persist)
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush_default(
+        &self,
+        persist: impl Fn(&PersistBatch<Vec<u8>, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        self.start_background_flush_with_config(BackgroundFlushConfig::default(), persist)
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush_for_batch_size(
+        &self,
+        batch_size: usize,
+        persist: impl Fn(&PersistBatch<Vec<u8>, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        self.start_background_flush_with_config(
+            BackgroundFlushConfig::for_batch_size(batch_size),
+            persist,
+        )
+    }
+
+    #[cfg(not(feature = "loom"))]
+    fn start_background_flush_with_config(
+        &self,
+        config: BackgroundFlushConfig,
+        persist: impl Fn(&PersistBatch<Vec<u8>, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        let persist = Arc::new(persist);
+        let dirty_inner = self.inner.clone();
+        let dirty_len: Arc<dyn Fn() -> usize + Send + Sync> =
+            Arc::new(move || dirty_inner.dirty_log_len());
+
+        let flush_inner = self.inner.clone();
+        let flush_trie = self.prefix_trie.clone();
+        let flush: Arc<dyn Fn(usize) -> Result<(), String> + Send + Sync> =
+            Arc::new(move |limit| {
+                Self::flush_now_inner(&flush_inner, &flush_trie, limit, |batch| persist(batch))
+                    .map(|_| ())
+            });
+
+        BackgroundFlushHandle::start_with_service(
+            config,
+            BackgroundFlushService { dirty_len, flush },
+        )
+    }
+
+    #[cfg(not(feature = "loom"))]
+    fn flush_now_inner<E>(
+        inner: &CacheLogMap<Vec<u8>, V, H>,
+        prefix_trie: &RwLock<Trie<PrefixKey, ()>>,
+        limit: usize,
+        mut persist: impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let mut total = 0_usize;
+        loop {
+            let batch = inner.low_level().flush_batch(limit.max(1));
+            if batch.is_empty() {
+                return Ok(total);
+            }
+            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+            persist(&persist_batch)?;
+            total += Self::mark_flushed_inner(inner, prefix_trie, &batch);
+        }
     }
 }
 
 #[cfg(all(test, not(feature = "loom")))]
 mod tests {
     use super::*;
+    use std::sync::{Arc as StdArc, Mutex as StdMutex};
 
     #[test]
     fn mark_flushed_prunes_non_visible_keys_from_trie() {
@@ -310,5 +497,67 @@ mod tests {
 
         assert_eq!(map.mark_flushed(&first), 1);
         assert_eq!(map.prefix_trie.read().count(), 1);
+    }
+
+    #[test]
+    fn with_persisted_scan_flushes_and_prunes_trie() {
+        let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+        map.insert_dirty(b"ab:001".to_vec(), 1);
+        map.insert_dirty(b"ab:002".to_vec(), 2);
+        let _ = map.advance_trie(64);
+
+        let mut persisted = Vec::new();
+        let result = map
+            .with_persisted_scan(
+                8,
+                |batch| {
+                    persisted = batch
+                        .iter()
+                        .map(|entry| (entry.key().clone(), *entry.value()))
+                        .collect();
+                    Ok::<_, ()>(())
+                },
+                || Ok::<_, ()>(map.list_prefix(b"ab:", |k, _, _| k.clone(), 16)),
+            )
+            .expect("persisted scan");
+
+        assert_eq!(
+            persisted,
+            vec![(b"ab:001".to_vec(), 1), (b"ab:002".to_vec(), 2)]
+        );
+        assert!(
+            result.is_empty(),
+            "flushed trie-backed list should be empty"
+        );
+        assert_eq!(map.prefix_trie.read().count(), 0);
+    }
+
+    #[test]
+    fn start_background_flush_for_batch_size_flushes_pending_writes() {
+        let map = BytePrefixMap::<usize>::new(CacheLogConfig::new(64, 64, 64));
+        map.insert_dirty(b"ab:001".to_vec(), 1);
+        map.insert_dirty(b"ab:002".to_vec(), 2);
+        assert_eq!(map.advance_trie(16), 2);
+
+        let persisted = StdArc::new(StdMutex::new(Vec::new()));
+        let persisted_flush = StdArc::clone(&persisted);
+        let service = map.start_background_flush_for_batch_size(2, move |batch| {
+            persisted_flush
+                .lock()
+                .expect("persisted lock")
+                .push(batch.len());
+            Ok(())
+        });
+
+        service.note_writes(2).expect("wake worker");
+        service.flush_sync().expect("flush sync");
+
+        let lens = persisted.lock().expect("persisted lock").clone();
+        assert_eq!(lens.iter().sum::<usize>(), 2, "persisted lens: {lens:?}");
+        assert_eq!(map.prefix_trie.read().count(), 0);
+        assert!(
+            map.list_prefix(b"ab:", |key, _, _| key.clone(), 1)
+                .is_empty()
+        );
     }
 }

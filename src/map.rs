@@ -1,18 +1,37 @@
-use ahash::{AHashMap, AHashSet};
+use ahash::{AHashMap, AHashSet, RandomState as AHashRandomState};
+#[cfg(any(test, feature = "dev-tools"))]
+use bytes::Bytes;
 use std::borrow::Borrow;
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
+#[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+use std::time::Instant as StdInstant;
+#[cfg(not(feature = "loom"))]
+use std::{cell::RefCell, thread_local};
 
 use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
 
-use crate::dirty_mode::{
-    DirtyAllocMode, DirtyMode, DirtyQueueBackend, FlushWork as DirtyFlushWork, OrderedFifoDirty,
+#[cfg(not(feature = "loom"))]
+use crate::background_flush::{
+    BackgroundFlushConfig, BackgroundFlushHandle, BackgroundFlushService,
 };
+#[cfg(any(test, feature = "dev-tools"))]
+use crate::bytes_pooling::bytes_from_borrowed;
+use crate::dirty_mode::{DirtyMode, FlushWork as DirtyFlushWork, OrderedFifoDirty};
 use crate::entry::{
-    CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, VisibleRef, WriteId,
+    CacheId, CleanRecord, DirtyRecord, EntryState, FlushBatch, PersistBatch, VisibleRef, WriteId,
 };
-use crate::sync::{Arc, AtomicU64, AtomicUsize, BoundedQueue, Mutex, Ordering, lock, new_mutex};
+#[cfg(feature = "dev-tools")]
+use crate::perf::CoalescedSingleWritePerfCounters;
+#[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+use crate::perf::*;
+use crate::sync::{
+    Arc, AtomicU64, AtomicUsize, BoundedQueue, Mutex, Ordering, SharedArc, SharedOptionArc, lock,
+    new_mutex,
+};
+
+const COALESCED_UNASSIGNED_WRITE_ID: WriteId = u64::MAX - 1;
 
 #[derive(Debug, Clone)]
 enum VisibleValue<K, V> {
@@ -29,14 +48,540 @@ impl<K, V> VisibleValue<K, V> {
     }
 }
 
+#[derive(Clone, Debug)]
+struct CoalescedInflight<K, V> {
+    batch: FlushBatch<K, V>,
+    index: AHashMap<K, usize>,
+}
+
+#[derive(Clone, Debug)]
+struct CoalescedRecord<V> {
+    id: WriteId,
+    value: V,
+}
+
+type CoalescedActiveMap<K, V, H> = ConcurrentHashMap<K, Box<CoalescedRecord<V>>, H>;
+type SharedCoalescedMap<K, V, H> = Arc<CoalescedActiveMap<K, V, H>>;
+
+struct CoalescedOverlay<K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    active: SharedArc<CoalescedActiveMap<K, V, H>>,
+    active_publish: Mutex<()>,
+    draining: Mutex<Option<SharedCoalescedMap<K, V, H>>>,
+    draining_shared: SharedOptionArc<CoalescedActiveMap<K, V, H>>,
+    inflight: Mutex<Option<Arc<CoalescedInflight<K, V>>>>,
+    inflight_shared: SharedOptionArc<CoalescedInflight<K, V>>,
+    compact_scratch: BoundedQueue<CoalescedCompactScratch<K, V>>,
+    build_hasher: H,
+    map_capacity: usize,
+}
+
+impl<K, V, H> CoalescedOverlay<K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    fn dirty_len(&self) -> usize {
+        self.active.load_full().len()
+            + lock(&self.inflight)
+                .as_ref()
+                .map_or(0, |current| current.batch.len())
+            + lock(&self.draining)
+                .as_ref()
+                .map_or(0, |snapshot| snapshot.len())
+    }
+
+    fn read_visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.read_active(key, |_, record| VisibleRef::Dirty(record.id))
+            .or_else(|| self.read_inflight(key, |record| VisibleRef::Dirty(record.id)))
+            .or_else(|| self.read_draining(key, |_, record| VisibleRef::Dirty(record.id)))
+    }
+
+    fn read_active<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&K, &CoalescedRecord<V>) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.active.with(|active| {
+            active.read_sync(key, |stored_key, record| {
+                reader(stored_key, record.as_ref())
+            })
+        })
+    }
+
+    fn read_draining<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&K, &CoalescedRecord<V>) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let draining_lock_started = coalesced_perf_enabled().then(StdInstant::now);
+        let result = self.draining_shared.with(|draining| {
+            let draining = draining?;
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            let draining_read_started = coalesced_perf_enabled().then(StdInstant::now);
+            let result = draining.read_sync(key, |stored_key, record| {
+                reader(stored_key, record.as_ref())
+            });
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            if let Some(started) = draining_read_started {
+                PERF_COALESCED_SINGLE_SNAPSHOT_DRAINING_READ_NS_TOTAL
+                    .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            }
+            Some(result)
+        });
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = draining_lock_started {
+            PERF_COALESCED_SINGLE_SNAPSHOT_DRAINING_LOCK_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        result?
+    }
+
+    fn for_each_active_key(&self, mut reader: impl FnMut(&K))
+    where
+        K: Clone,
+    {
+        self.active.with(|active| {
+            active.iter_sync(|key, _| {
+                reader(key);
+                true
+            })
+        });
+    }
+
+    fn for_each_draining_key(&self, mut reader: impl FnMut(&K))
+    where
+        K: Clone,
+    {
+        self.draining_shared.with(|draining| {
+            let Some(draining) = draining else {
+                return;
+            };
+            draining.iter_sync(|key, _| {
+                reader(key);
+                true
+            });
+        });
+    }
+
+    fn visible_key_count(&self) -> usize
+    where
+        K: Clone,
+    {
+        let mut seen = AHashSet::new();
+        self.for_each_active_key(|key| {
+            seen.insert(key.clone());
+        });
+        self.with_inflight(|inflight| {
+            if let Some(inflight) = inflight {
+                for record in inflight.batch.iter() {
+                    seen.insert(record.key.clone());
+                }
+            }
+        });
+        self.for_each_draining_key(|key| {
+            seen.insert(key.clone());
+        });
+        seen.len()
+    }
+
+    fn take_compact_scratch(&self, capacity: usize) -> CoalescedCompactScratch<K, V> {
+        let mut scratch = self
+            .compact_scratch
+            .pop()
+            .unwrap_or_else(|| CoalescedCompactScratch::with_capacity(capacity));
+        scratch.ensure_capacity(capacity);
+        scratch
+    }
+
+    fn return_compact_scratch(&self, mut scratch: CoalescedCompactScratch<K, V>) {
+        scratch.clear();
+        let _ = self.compact_scratch.push(scratch);
+    }
+
+    fn publish_owned(
+        map: &ConcurrentHashMap<K, Box<CoalescedRecord<V>>, H>,
+        key: K,
+        id: WriteId,
+        value: V,
+    ) -> bool {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let entry_lookup_started = coalesced_perf_enabled().then(StdInstant::now);
+        let entry = map.entry_sync(key);
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = entry_lookup_started {
+            PERF_COALESCED_SINGLE_ACTIVE_ENTRY_LOOKUP_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        match entry {
+            MapEntry::Occupied(mut occupied) => {
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                let occupied_started = coalesced_perf_enabled().then(StdInstant::now);
+                let current = occupied.get_mut();
+                current.id = id;
+                current.value = value;
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                if let Some(started) = occupied_started {
+                    PERF_COALESCED_SINGLE_ACTIVE_ENTRY_OCCUPIED_NS_TOTAL
+                        .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                }
+                false
+            }
+            MapEntry::Vacant(vacant) => {
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                let vacant_started = coalesced_perf_enabled().then(StdInstant::now);
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                let vacant_box_started = coalesced_perf_enabled().then(StdInstant::now);
+                let record = Box::new(CoalescedRecord { id, value });
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                if let Some(started) = vacant_box_started {
+                    PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_BOX_NS_TOTAL
+                        .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                }
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                let vacant_insert_started = coalesced_perf_enabled().then(StdInstant::now);
+                vacant.insert_entry(record);
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                if let Some(started) = vacant_insert_started {
+                    PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_INSERT_NS_TOTAL
+                        .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                }
+                #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+                if let Some(started) = vacant_started {
+                    PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_NS_TOTAL
+                        .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+                }
+                true
+            }
+        }
+    }
+
+    fn publish_active_locked(&self, key: K, id: WriteId, value: V) -> bool {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let publish_started = coalesced_perf_enabled().then(StdInstant::now);
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let active_load_started = coalesced_perf_enabled().then(StdInstant::now);
+        let inserted = self.active.with(|active| {
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            if let Some(started) = active_load_started {
+                PERF_COALESCED_SINGLE_ACTIVE_MAP_LOAD_NS_TOTAL
+                    .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            }
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            let active_entry_started = coalesced_perf_enabled().then(StdInstant::now);
+            let inserted = match active.insert_sync(key, Box::new(CoalescedRecord { id, value })) {
+                Ok(()) => true,
+                Err((key, record)) => Self::publish_owned(active, key, record.id, record.value),
+            };
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            if let Some(started) = active_entry_started {
+                PERF_COALESCED_SINGLE_ACTIVE_ENTRY_PUBLISH_NS_TOTAL
+                    .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            }
+            inserted
+        });
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = publish_started {
+            PERF_COALESCED_SINGLE_ACTIVE_PUBLISH_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        inserted
+    }
+
+    fn update_or_insert<Q>(&self, lookup_key: &Q, owned_key: K, id: WriteId, value: V) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        let mut value = Some(value);
+        self.active.with(|active| {
+            self.update_or_insert_in_active(active, lookup_key, owned_key, id, &mut value)
+        })
+    }
+
+    fn update_or_insert_in_active<Q>(
+        &self,
+        active: &ConcurrentHashMap<K, Box<CoalescedRecord<V>>, H>,
+        lookup_key: &Q,
+        owned_key: K,
+        id: WriteId,
+        value: &mut Option<V>,
+    ) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        if active
+            .update_sync(lookup_key, |_, current| {
+                current.id = id;
+                current.value = value.take().expect("coalesced update value should exist");
+            })
+            .is_some()
+        {
+            return false;
+        }
+
+        match active.entry_sync(owned_key) {
+            MapEntry::Occupied(mut occupied) => {
+                let current = occupied.get_mut();
+                current.id = id;
+                current.value = value.take().expect("coalesced raced value should exist");
+                false
+            }
+            MapEntry::Vacant(vacant) => {
+                vacant.insert_entry(Box::new(CoalescedRecord {
+                    id,
+                    value: value.take().expect("coalesced miss value should exist"),
+                }));
+                true
+            }
+        }
+    }
+
+    fn new_active_map(&self) -> SharedCoalescedMap<K, V, H> {
+        Arc::new(ConcurrentHashMap::with_capacity_and_hasher(
+            self.map_capacity,
+            self.build_hasher.clone(),
+        ))
+    }
+
+    fn ensure_draining_snapshot_locked(&self) {
+        {
+            let draining = lock(&self.draining);
+            if draining.as_ref().is_some_and(|map| !map.is_empty()) {
+                return;
+            }
+        }
+
+        let active = self.active.load_full();
+        if active.is_empty() {
+            return;
+        }
+
+        let fresh = self.new_active_map();
+        let drained = self.active.swap(fresh);
+        let mut draining = lock(&self.draining);
+        if draining.as_ref().is_some_and(|map| !map.is_empty()) {
+            return;
+        }
+        self.draining_shared.store(Some(drained.clone()));
+        *draining = Some(drained);
+    }
+
+    fn begin_snapshot_drain_batch(&self, limit: usize) -> Vec<DirtyRecord<K, V>> {
+        let mut draining = lock(&self.draining);
+        let Some(snapshot) = draining.as_ref() else {
+            return Vec::new();
+        };
+        if snapshot.is_empty() {
+            self.draining_shared.store(None);
+            *draining = None;
+            return Vec::new();
+        }
+
+        let mut entries = Vec::with_capacity(limit);
+        let mut current = snapshot.begin_sync();
+        while entries.len() < limit {
+            let Some(entry) = current.take() else {
+                break;
+            };
+            let ((key, record), next) = entry.remove_and_sync();
+            entries.push(DirtyRecord {
+                id: record.id,
+                key,
+                value: record.value,
+            });
+            current = next;
+        }
+        if snapshot.is_empty() {
+            self.draining_shared.store(None);
+            *draining = None;
+        }
+        entries
+    }
+
+    fn mark_flushed_if_current(&self, batch: &FlushBatch<K, V>) -> usize {
+        let mut inflight = lock(&self.inflight);
+        let Some(current) = inflight.as_ref() else {
+            return 0;
+        };
+        if !Self::same_batch_ids(&current.batch, batch) {
+            return 0;
+        }
+        let drained = inflight.take().expect("coalesced inflight vanished");
+        self.inflight_shared.store(None);
+        drop(inflight);
+
+        let mut draining = lock(&self.draining);
+        if draining
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.is_empty())
+        {
+            self.draining_shared.store(None);
+            *draining = None;
+        }
+
+        drained.batch.len()
+    }
+
+    fn build_inflight_index(batch: &FlushBatch<K, V>) -> AHashMap<K, usize> {
+        let mut index = AHashMap::with_capacity(batch.len());
+        for (slot, record) in batch.iter().enumerate() {
+            index.insert(record.key.clone(), slot);
+        }
+        index
+    }
+
+    fn read_inflight<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&DirtyRecord<K, V>) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let inflight_lock_started = coalesced_perf_enabled().then(StdInstant::now);
+        let result = self.inflight_shared.with(|inflight| {
+            let inflight = inflight?;
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            let inflight_index_lookup_started = coalesced_perf_enabled().then(StdInstant::now);
+            let slot = inflight.index.get(key).copied();
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            if let Some(started) = inflight_index_lookup_started {
+                PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_INDEX_LOOKUP_NS_TOTAL
+                    .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            }
+            let slot = slot?;
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            let inflight_record_get_started = coalesced_perf_enabled().then(StdInstant::now);
+            let record = inflight.batch.get(slot);
+            #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+            if let Some(started) = inflight_record_get_started {
+                PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_RECORD_GET_NS_TOTAL
+                    .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            }
+            let record = record.expect("coalesced inflight index pointed past batch len");
+            Some(reader(record))
+        });
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = inflight_lock_started {
+            PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_LOCK_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        result
+    }
+
+    fn with_inflight<R>(&self, reader: impl FnOnce(Option<&CoalescedInflight<K, V>>) -> R) -> R {
+        self.inflight_shared
+            .with(|inflight| reader(inflight.map(Arc::as_ref)))
+    }
+
+    fn backlog_counts(&self) -> DirtyBacklogCounts {
+        let pending_visible = self.active.load_full().len();
+        let inflight = lock(&self.inflight)
+            .as_ref()
+            .map_or(0, |current| current.batch.len());
+        let draining = lock(&self.draining)
+            .as_ref()
+            .map_or(0, |snapshot| snapshot.len());
+        DirtyBacklogCounts {
+            dirty_total: self.dirty_len(),
+            pending_visible,
+            inflight,
+            draining,
+        }
+    }
+
+    fn same_batch_ids(left: &FlushBatch<K, V>, right: &FlushBatch<K, V>) -> bool {
+        left.ptr_eq(right)
+            || (left.len() == right.len()
+                && left.iter().zip(right.iter()).all(|(l, r)| l.id == r.id))
+    }
+}
+
+#[derive(Debug)]
+struct CoalescedCompactScratch<K, V> {
+    latest_slot: AHashMap<u64, DedupeSlots>,
+    compacted: Vec<(K, V)>,
+    fingerprint_hasher: AHashRandomState,
+}
+
+impl<K, V> CoalescedCompactScratch<K, V> {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            latest_slot: AHashMap::with_capacity(capacity),
+            compacted: Vec::with_capacity(capacity),
+            fingerprint_hasher: AHashRandomState::new(),
+        }
+    }
+
+    fn ensure_capacity(&mut self, capacity: usize) {
+        let latest_slot_capacity = self.latest_slot.capacity();
+        if latest_slot_capacity < capacity {
+            self.latest_slot
+                .reserve(capacity.saturating_sub(latest_slot_capacity));
+        }
+        let compacted_capacity = self.compacted.capacity();
+        if compacted_capacity < capacity {
+            self.compacted
+                .reserve(capacity.saturating_sub(compacted_capacity));
+        }
+    }
+
+    fn clear(&mut self) {
+        self.latest_slot.clear();
+        self.compacted.clear();
+    }
+}
+
+#[derive(Clone, Debug)]
+enum DedupeSlots {
+    One(usize),
+    Many(Vec<usize>),
+}
+
+#[cfg(not(feature = "loom"))]
+thread_local! {
+    static BORROWED_COALESCED_KEYS: RefCell<Vec<Vec<u8>>> = const { RefCell::new(Vec::new()) };
+}
+
+fn with_borrowed_coalesced_keys<R>(f: impl FnOnce(&mut Vec<Vec<u8>>) -> R) -> R {
+    #[cfg(not(feature = "loom"))]
+    {
+        BORROWED_COALESCED_KEYS.with(|scratch| f(&mut scratch.borrow_mut()))
+    }
+
+    #[cfg(feature = "loom")]
+    {
+        let mut scratch = Vec::new();
+        f(&mut scratch)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CacheLogConfig {
     pub visible_capacity: usize,
     pub dirty_log_capacity: usize,
     pub clean_capacity: usize,
     pub dirty_write_mode: DirtyWriteMode,
-    pub dirty_alloc_mode: DirtyAllocMode,
-    pub dirty_queue_backend: DirtyQueueBackend,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
@@ -50,6 +595,14 @@ pub enum DirtyWriteMode {
 pub enum FlushWork<K, V> {
     Batch(FlushBatch<K, V>),
     ForceFlush,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DirtyBacklogCounts {
+    pub dirty_total: usize,
+    pub pending_visible: usize,
+    pub inflight: usize,
+    pub draining: usize,
 }
 
 impl<K, V> FlushWork<K, V> {
@@ -72,23 +625,11 @@ impl CacheLogConfig {
             dirty_log_capacity,
             clean_capacity,
             dirty_write_mode: DirtyWriteMode::StrictLog,
-            dirty_alloc_mode: DirtyAllocMode::ChunkedArena,
-            dirty_queue_backend: DirtyQueueBackend::Kanal,
         }
     }
 
     pub const fn with_dirty_write_mode(mut self, mode: DirtyWriteMode) -> Self {
         self.dirty_write_mode = mode;
-        self
-    }
-
-    pub const fn with_dirty_alloc_mode(mut self, mode: DirtyAllocMode) -> Self {
-        self.dirty_alloc_mode = mode;
-        self
-    }
-
-    pub const fn with_dirty_queue_backend(mut self, backend: DirtyQueueBackend) -> Self {
-        self.dirty_queue_backend = backend;
         self
     }
 }
@@ -105,97 +646,77 @@ where
     H: BuildHasher + Clone,
 {
     visible: ConcurrentHashMap<K, VisibleValue<K, V>, H>,
+    coalesced: CoalescedOverlay<K, V, H>,
     dirty_mode: OrderedFifoDirty<K, V>,
     dirty_write_mode: DirtyWriteMode,
     clean_fifo: BoundedQueue<(K, CacheId)>,
     clean_count: AtomicUsize,
     next_cache: AtomicU64,
     next_dirty_write: AtomicU64,
+    coalesced_has_unassigned_ids: AtomicUsize,
     strict_flushed_upto: AtomicU64,
-    coalesced_dirty_count: AtomicUsize,
-    coalesced_inflight: Mutex<Option<FlushBatch<K, V>>>,
 }
 
-impl<K, V> CacheLogMap<K, V, RandomState>
-where
-    K: Clone + Eq + Hash,
-{
-    pub fn new(config: CacheLogConfig) -> Self {
-        Self::with_hasher(config, RandomState::new())
-    }
-}
-
-impl<K, V, H> CacheLogMap<K, V, H>
+pub struct LowLevelMap<'a, K, V, H = RandomState>
 where
     K: Clone + Eq + Hash,
     H: BuildHasher + Clone,
 {
-    pub fn with_hasher(config: CacheLogConfig, build_hasher: H) -> Self {
-        Self {
-            visible: ConcurrentHashMap::with_capacity_and_hasher(
-                config.visible_capacity,
-                build_hasher.clone(),
-            ),
-            dirty_mode: OrderedFifoDirty::new(
-                config.dirty_log_capacity,
-                config.dirty_queue_backend,
-                config.dirty_alloc_mode,
-            ),
-            dirty_write_mode: config.dirty_write_mode,
-            clean_fifo: BoundedQueue::new(config.clean_capacity),
-            clean_count: AtomicUsize::new(0),
-            next_cache: AtomicU64::new(0),
-            next_dirty_write: AtomicU64::new(0),
-            strict_flushed_upto: AtomicU64::new(u64::MAX),
-            coalesced_dirty_count: AtomicUsize::new(0),
-            coalesced_inflight: new_mutex(None),
-        }
-    }
+    map: &'a CacheLogMap<K, V, H>,
+}
 
-    pub fn visible_len(&self) -> usize {
-        self.visible.len()
-    }
+struct StrictEngine<'a, K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    map: &'a CacheLogMap<K, V, H>,
+}
 
-    pub fn dirty_log_len(&self) -> usize {
-        match self.dirty_write_mode {
-            DirtyWriteMode::StrictLog => self.dirty_mode.len(),
-            DirtyWriteMode::CoalescedMap => self.coalesced_dirty_count.load(Ordering::Relaxed),
-        }
-    }
+struct CoalescedEngine<'a, K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    map: &'a CacheLogMap<K, V, H>,
+}
 
-    pub fn clean_store_len(&self) -> usize {
-        self.clean_count.load(Ordering::Relaxed)
-    }
+#[cfg(not(feature = "loom"))]
+struct StrictArcEngine<K, V, H>
+where
+    K: Clone + Eq + Hash + Send + Sync + 'static,
+    V: Send + Sync + 'static,
+    H: BuildHasher + Clone + Send + Sync + 'static,
+{
+    map: Arc<CacheLogMap<K, V, H>>,
+}
 
-    pub fn contains<Q>(&self, key: &Q) -> bool
+#[cfg(not(feature = "loom"))]
+struct CoalescedArcEngine<K, V, H>
+where
+    K: Clone + Eq + Hash + Send + Sync + 'static,
+    V: Send + Sync + 'static,
+    H: BuildHasher + Clone + Send + Sync + 'static,
+{
+    map: Arc<CacheLogMap<K, V, H>>,
+}
+
+impl<'a, K, V, H> StrictEngine<'a, K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
     where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
-        self.read(key, |_, _, _, _| ()).is_some()
-    }
-
-    pub fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-    {
-        self.visible
+        self.map
+            .visible
             .read_sync(key, |_, visible| visible.visible_ref())
     }
 
-    pub fn get_cloned<Q>(&self, key: &Q) -> Option<(V, EntryState, VisibleRef)>
-    where
-        K: Borrow<Q>,
-        Q: Eq + Hash + ?Sized,
-        V: Clone,
-    {
-        self.read(key, |_, value, state, visible| {
-            (value.clone(), state, visible)
-        })
-    }
-
-    pub fn read<Q, R>(
+    fn read_full<Q, R>(
         &self,
         key: &Q,
         reader: impl FnOnce(&K, &V, EntryState, VisibleRef) -> R,
@@ -205,7 +726,7 @@ where
         Q: Eq + Hash + ?Sized,
     {
         let mut reader = Some(reader);
-        self.visible.read_sync(key, |_, visible| match visible {
+        self.map.visible.read_sync(key, |_, visible| match visible {
             VisibleValue::Dirty(record) => {
                 let reader = reader
                     .take()
@@ -231,10 +752,672 @@ where
         })
     }
 
+    fn snapshot_prefix_keys_sorted(&self, prefix: &[u8], limit: usize) -> Vec<K>
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return Vec::new();
+        }
+        let _publish = lock(&self.map.coalesced.active_publish);
+        let mut keys = Vec::with_capacity(limit.min(1024));
+        let mut seen = AHashSet::with_capacity(limit.min(1024));
+        self.map.visible.iter_sync(|_, visible| {
+            let key = match visible {
+                VisibleValue::Dirty(record) => &record.key,
+                VisibleValue::Clean(record) => &record.key,
+            };
+            if key.borrow().starts_with(prefix) && seen.insert((*key).clone()) {
+                keys.push((*key).clone());
+            }
+            true
+        });
+        keys.sort_unstable_by(|left, right| left.borrow().cmp(right.borrow()));
+        if keys.len() > limit {
+            keys.truncate(limit);
+        }
+        keys
+    }
+
+    fn insert_dirty(&self, key: K, value: V) -> WriteId {
+        let record = self.map.dirty_mode.append(key, value);
+        let id = record.id;
+        self.map.publish_dirty_record(record);
+        id
+    }
+
+    fn put(&self, key: K, value: V) {
+        let _ = self.insert_dirty(key, value);
+    }
+
+    fn insert_dirty_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
+        if entries.is_empty() {
+            return Vec::new();
+        }
+        let _reserved = self.map.visible.reserve(entries.len());
+        self.map.insert_dirty_batch_strict(entries)
+    }
+
+    fn insert_dirty_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
+        if entries.is_empty() {
+            return 0;
+        }
+        let _reserved = self.map.visible.reserve(entries.len());
+        self.map.insert_dirty_batch_strict_without_ids(entries)
+    }
+
+    fn put_batch(&self, entries: Vec<(K, V)>) -> usize {
+        self.insert_dirty_batch_without_ids(entries)
+    }
+
+    fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+        self.map.dirty_mode.flush_batch(limit)
+    }
+
+    fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+        match self.map.dirty_mode.wait_for_flush_work(limit) {
+            DirtyFlushWork::Batch(batch) => FlushWork::Batch(batch),
+            DirtyFlushWork::ForceFlush => FlushWork::ForceFlush,
+        }
+    }
+
+    fn signal_force_flush(&self) {
+        self.map.dirty_mode.signal_force_flush();
+    }
+
+    fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+        let marked = self.map.dirty_mode.mark_flushed(batch);
+        if marked == 0 {
+            return 0;
+        }
+
+        if let Some(last_id) = batch.last_id() {
+            self.map.advance_strict_flushed_upto(last_id);
+        }
+        let strict_flushed_upto = self.map.strict_flushed_upto.load(Ordering::SeqCst);
+
+        for record in batch.iter() {
+            let _ = self
+                .map
+                .visible
+                .remove_if_sync(&record.key, |visible| match visible {
+                    VisibleValue::Dirty(current) => current.id <= strict_flushed_upto,
+                    VisibleValue::Clean(_) => true,
+                });
+        }
+        marked
+    }
+
+    fn with_flush_batch<E>(
+        &self,
+        limit: usize,
+        persist: impl FnOnce(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let batch = self.flush_batch(limit.max(1));
+        if batch.is_empty() {
+            return Ok(0);
+        }
+        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+        persist(&persist_batch)?;
+        Ok(self.mark_flushed(&batch))
+    }
+
+    fn flush_now<E>(
+        &self,
+        limit: usize,
+        mut persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let mut total = 0_usize;
+        loop {
+            let batch = self.flush_batch(limit.max(1));
+            if batch.is_empty() {
+                return Ok(total);
+            }
+            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+            persist(&persist_batch)?;
+            total += self.mark_flushed(&batch);
+        }
+    }
+
+    fn with_persisted_scan<R, E>(
+        &self,
+        flush_limit: usize,
+        persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+        scan: impl FnOnce() -> Result<R, E>,
+    ) -> Result<R, E> {
+        let _ = self.flush_now(flush_limit, persist)?;
+        scan()
+    }
+}
+
+impl<'a, K, V, H> CoalescedEngine<'a, K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        let _publish = lock(&self.map.coalesced.active_publish);
+        self.map
+            .coalesced
+            .read_visible_ref(key)
+            .or_else(|| {
+                self.map
+                    .visible
+                    .read_sync(key, |_, visible| visible.visible_ref())
+            })
+            .or_else(|| {
+                self.map
+                    .read_coalesced_inflight(key, |record| VisibleRef::Dirty(record.id))
+            })
+    }
+
+    fn read_full<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&K, &V, EntryState, VisibleRef) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        let _publish = lock(&self.map.coalesced.active_publish);
+        let mut reader = Some(reader);
+        if let Some(result) = self.map.coalesced.read_active(key, |stored_key, record| {
+            let reader = reader
+                .take()
+                .expect("read_sync closure called more than once");
+            reader(
+                stored_key,
+                &record.value,
+                EntryState::Dirty,
+                VisibleRef::Dirty(record.id),
+            )
+        }) {
+            return Some(result);
+        }
+
+        if let Some(result) = self.map.read_coalesced_inflight(key, |record| {
+            let reader = reader
+                .take()
+                .expect("read_coalesced_inflight called more than once");
+            reader(
+                &record.key,
+                &record.value,
+                EntryState::Dirty,
+                VisibleRef::Dirty(record.id),
+            )
+        }) {
+            return Some(result);
+        }
+
+        if let Some(result) = self.map.coalesced.read_draining(key, |stored_key, record| {
+            let reader = reader
+                .take()
+                .expect("read_draining closure called more than once");
+            reader(
+                stored_key,
+                &record.value,
+                EntryState::Dirty,
+                VisibleRef::Dirty(record.id),
+            )
+        }) {
+            return Some(result);
+        }
+
+        self.map.visible.read_sync(key, |_, visible| match visible {
+            VisibleValue::Dirty(record) => {
+                let reader = reader
+                    .take()
+                    .expect("read_sync closure called more than once");
+                reader(
+                    &record.key,
+                    &record.value,
+                    EntryState::Dirty,
+                    VisibleRef::Dirty(record.id),
+                )
+            }
+            VisibleValue::Clean(record) => {
+                let reader = reader
+                    .take()
+                    .expect("read_sync closure called more than once");
+                reader(
+                    &record.key,
+                    &record.value,
+                    EntryState::Clean,
+                    VisibleRef::Clean(record.id),
+                )
+            }
+        })
+    }
+
+    fn snapshot_prefix_keys_sorted(&self, prefix: &[u8], limit: usize) -> Vec<K>
+    where
+        K: Borrow<[u8]>,
+    {
+        if limit == 0 {
+            return Vec::new();
+        }
+        let mut keys = Vec::with_capacity(limit.min(1024));
+        let mut seen = AHashSet::with_capacity(limit.min(1024));
+        self.map.coalesced.for_each_active_key(|key| {
+            if key.borrow().starts_with(prefix) && seen.insert(key.clone()) {
+                keys.push(key.clone());
+            }
+        });
+        self.map.visible.iter_sync(|_, visible| {
+            let key = match visible {
+                VisibleValue::Dirty(record) => &record.key,
+                VisibleValue::Clean(record) => &record.key,
+            };
+            if key.borrow().starts_with(prefix) && seen.insert((*key).clone()) {
+                keys.push((*key).clone());
+            }
+            true
+        });
+        self.map.coalesced.with_inflight(|inflight| {
+            if let Some(inflight) = inflight {
+                for record in inflight.batch.iter() {
+                    if record.key.borrow().starts_with(prefix) && seen.insert(record.key.clone()) {
+                        keys.push(record.key.clone());
+                    }
+                }
+            }
+        });
+        self.map.coalesced.for_each_draining_key(|key| {
+            if key.borrow().starts_with(prefix) && seen.insert(key.clone()) {
+                keys.push(key.clone());
+            }
+        });
+        keys.sort_unstable_by(|left, right| left.borrow().cmp(right.borrow()));
+        if keys.len() > limit {
+            keys.truncate(limit);
+        }
+        keys
+    }
+
+    fn insert_dirty(&self, key: K, value: V) -> WriteId {
+        self.map.publish_coalesced_single_write(key, value)
+    }
+
+    fn put(&self, key: K, value: V) {
+        self.map
+            .publish_coalesced_single_write_without_id(key, value);
+    }
+
+    fn insert_dirty_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
+        if entries.is_empty() {
+            return Vec::new();
+        }
+        self.map.insert_dirty_batch_coalesced(entries)
+    }
+
+    fn insert_dirty_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
+        if entries.is_empty() {
+            return 0;
+        }
+        self.map.insert_dirty_batch_coalesced_without_ids(entries)
+    }
+
+    fn put_batch(&self, entries: Vec<(K, V)>) -> usize {
+        self.insert_dirty_batch_without_ids(entries)
+    }
+
+    fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+        self.map.flush_batch_coalesced(limit)
+    }
+
+    fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+        let batch = self.map.flush_batch_coalesced(limit);
+        if batch.is_empty() {
+            FlushWork::ForceFlush
+        } else {
+            FlushWork::Batch(batch)
+        }
+    }
+
+    fn signal_force_flush(&self) {}
+
+    fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+        self.map.mark_flushed_coalesced(batch)
+    }
+
+    fn with_flush_batch<E>(
+        &self,
+        limit: usize,
+        persist: impl FnOnce(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let batch = self.flush_batch(limit.max(1));
+        if batch.is_empty() {
+            return Ok(0);
+        }
+        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+        persist(&persist_batch)?;
+        Ok(self.mark_flushed(&batch))
+    }
+
+    fn flush_now<E>(
+        &self,
+        limit: usize,
+        mut persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let mut total = 0_usize;
+        loop {
+            let batch = self.flush_batch(limit.max(1));
+            if batch.is_empty() {
+                return Ok(total);
+            }
+            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+            persist(&persist_batch)?;
+            total += self.mark_flushed(&batch);
+        }
+    }
+
+    fn with_persisted_scan<R, E>(
+        &self,
+        flush_limit: usize,
+        persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+        scan: impl FnOnce() -> Result<R, E>,
+    ) -> Result<R, E> {
+        let _ = self.flush_now(flush_limit, persist)?;
+        scan()
+    }
+}
+
+impl<K, V> CacheLogMap<K, V, RandomState>
+where
+    K: Clone + Eq + Hash,
+{
+    pub fn new(config: CacheLogConfig) -> Self {
+        Self::with_hasher(config, RandomState::new())
+    }
+}
+
+#[cfg(not(feature = "loom"))]
+impl<K, V, H> StrictArcEngine<K, V, H>
+where
+    K: Clone + Eq + Hash + Send + Sync + 'static,
+    V: Send + Sync + 'static,
+    H: BuildHasher + Clone + Send + Sync + 'static,
+{
+    fn background_flush_service(
+        &self,
+        persist: impl Fn(&PersistBatch<K, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushService {
+        let persist = Arc::new(persist);
+        let dirty_len_map = self.map.clone();
+        let dirty_len: Arc<dyn Fn() -> usize + Send + Sync> =
+            Arc::new(move || dirty_len_map.dirty_log_len());
+        let flush_map = self.map.clone();
+        let flush: Arc<dyn Fn(usize) -> Result<(), String> + Send + Sync> =
+            Arc::new(move |limit| {
+                flush_map
+                    .strict_engine()
+                    .flush_now(limit, |batch| persist(batch))
+                    .map(|_| ())
+            });
+        BackgroundFlushService { dirty_len, flush }
+    }
+}
+
+#[cfg(not(feature = "loom"))]
+impl<K, V, H> CoalescedArcEngine<K, V, H>
+where
+    K: Clone + Eq + Hash + Send + Sync + 'static,
+    V: Send + Sync + 'static,
+    H: BuildHasher + Clone + Send + Sync + 'static,
+{
+    fn background_flush_service(
+        &self,
+        persist: impl Fn(&PersistBatch<K, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushService {
+        let persist = Arc::new(persist);
+        let dirty_len_map = self.map.clone();
+        let dirty_len: Arc<dyn Fn() -> usize + Send + Sync> =
+            Arc::new(move || dirty_len_map.dirty_log_len());
+        let flush_map = self.map.clone();
+        let flush: Arc<dyn Fn(usize) -> Result<(), String> + Send + Sync> =
+            Arc::new(move |limit| {
+                flush_map
+                    .coalesced_engine()
+                    .flush_now(limit, |batch| persist(batch))
+                    .map(|_| ())
+            });
+        BackgroundFlushService { dirty_len, flush }
+    }
+}
+
+impl<K, V, H> CacheLogMap<K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    const COALESCED_COMPACT_SCRATCH_POOL_SIZE: usize = 4;
+
+    pub fn with_hasher(config: CacheLogConfig, build_hasher: H) -> Self {
+        let initial_compact_capacity = config.dirty_log_capacity.clamp(64, 1024);
+        let compact_scratch = BoundedQueue::new(Self::COALESCED_COMPACT_SCRATCH_POOL_SIZE.max(1));
+        for _ in 0..Self::COALESCED_COMPACT_SCRATCH_POOL_SIZE {
+            let _ = compact_scratch.push(CoalescedCompactScratch::with_capacity(
+                initial_compact_capacity,
+            ));
+        }
+
+        Self {
+            visible: ConcurrentHashMap::with_capacity_and_hasher(
+                config.visible_capacity,
+                build_hasher.clone(),
+            ),
+            coalesced: CoalescedOverlay {
+                active: SharedArc::new(Arc::new(ConcurrentHashMap::with_capacity_and_hasher(
+                    config.visible_capacity,
+                    build_hasher.clone(),
+                ))),
+                active_publish: new_mutex(()),
+                draining: new_mutex(None),
+                draining_shared: SharedOptionArc::empty(),
+                inflight: new_mutex(None),
+                inflight_shared: SharedOptionArc::empty(),
+                compact_scratch,
+                build_hasher: build_hasher.clone(),
+                map_capacity: config.visible_capacity,
+            },
+            dirty_mode: OrderedFifoDirty::new(config.dirty_log_capacity),
+            dirty_write_mode: config.dirty_write_mode,
+            clean_fifo: BoundedQueue::new(config.clean_capacity),
+            clean_count: AtomicUsize::new(0),
+            next_cache: AtomicU64::new(0),
+            next_dirty_write: AtomicU64::new(0),
+            coalesced_has_unassigned_ids: AtomicUsize::new(0),
+            strict_flushed_upto: AtomicU64::new(u64::MAX),
+        }
+    }
+
+    pub fn visible_len(&self) -> usize {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.visible.len(),
+            DirtyWriteMode::CoalescedMap => {
+                self.clean_count.load(Ordering::Relaxed) + self.coalesced.visible_key_count()
+            }
+        }
+    }
+
+    pub fn dirty_log_len(&self) -> usize {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.dirty_mode.len(),
+            DirtyWriteMode::CoalescedMap => self.coalesced.dirty_len(),
+        }
+    }
+
+    pub fn dirty_backlog_counts(&self) -> DirtyBacklogCounts {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => DirtyBacklogCounts {
+                dirty_total: self.dirty_mode.len(),
+                pending_visible: self.dirty_mode.pending_len(),
+                inflight: self.dirty_mode.inflight_len(),
+                draining: 0,
+            },
+            DirtyWriteMode::CoalescedMap => self.coalesced.backlog_counts(),
+        }
+    }
+
+    #[cfg(feature = "dev-tools")]
+    pub fn coalesced_single_write_perf_counters(&self) -> CoalescedSingleWritePerfCounters {
+        #[cfg(not(feature = "loom"))]
+        return CoalescedSingleWritePerfCounters {
+            write_id_ns_total: PERF_COALESCED_SINGLE_WRITE_ID_NS_TOTAL.load(Ordering::Relaxed),
+            remove_clean_ns_total: PERF_COALESCED_SINGLE_REMOVE_CLEAN_NS_TOTAL
+                .load(Ordering::Relaxed),
+            snapshot_check_ns_total: PERF_COALESCED_SINGLE_SNAPSHOT_CHECK_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_publish_ns_total: PERF_COALESCED_SINGLE_ACTIVE_PUBLISH_NS_TOTAL
+                .load(Ordering::Relaxed),
+            snapshot_inflight_check_ns_total:
+                PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_CHECK_NS_TOTAL.load(Ordering::Relaxed),
+            snapshot_draining_check_ns_total:
+                PERF_COALESCED_SINGLE_SNAPSHOT_DRAINING_CHECK_NS_TOTAL.load(Ordering::Relaxed),
+            snapshot_inflight_lock_ns_total: PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_LOCK_NS_TOTAL
+                .load(Ordering::Relaxed),
+            snapshot_inflight_scan_ns_total: PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_SCAN_NS_TOTAL
+                .load(Ordering::Relaxed),
+            snapshot_inflight_index_lookup_ns_total:
+                PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_INDEX_LOOKUP_NS_TOTAL
+                    .load(Ordering::Relaxed),
+            snapshot_inflight_record_get_ns_total:
+                PERF_COALESCED_SINGLE_SNAPSHOT_INFLIGHT_RECORD_GET_NS_TOTAL.load(Ordering::Relaxed),
+            snapshot_draining_lock_ns_total: PERF_COALESCED_SINGLE_SNAPSHOT_DRAINING_LOCK_NS_TOTAL
+                .load(Ordering::Relaxed),
+            snapshot_draining_read_ns_total: PERF_COALESCED_SINGLE_SNAPSHOT_DRAINING_READ_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_map_load_ns_total: PERF_COALESCED_SINGLE_ACTIVE_MAP_LOAD_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_entry_publish_ns_total: PERF_COALESCED_SINGLE_ACTIVE_ENTRY_PUBLISH_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_entry_lookup_ns_total: PERF_COALESCED_SINGLE_ACTIVE_ENTRY_LOOKUP_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_entry_occupied_ns_total: PERF_COALESCED_SINGLE_ACTIVE_ENTRY_OCCUPIED_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_entry_vacant_ns_total: PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_NS_TOTAL
+                .load(Ordering::Relaxed),
+            active_entry_vacant_box_ns_total:
+                PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_BOX_NS_TOTAL.load(Ordering::Relaxed),
+            active_entry_vacant_insert_ns_total:
+                PERF_COALESCED_SINGLE_ACTIVE_ENTRY_VACANT_INSERT_NS_TOTAL.load(Ordering::Relaxed),
+            dirty_count_add_ns_total: PERF_COALESCED_SINGLE_DIRTY_COUNT_ADD_NS_TOTAL
+                .load(Ordering::Relaxed),
+        };
+
+        #[cfg(feature = "loom")]
+        CoalescedSingleWritePerfCounters::default()
+    }
+
+    pub fn clean_store_len(&self) -> usize {
+        self.clean_count.load(Ordering::Relaxed)
+    }
+
+    fn strict_engine(&self) -> StrictEngine<'_, K, V, H> {
+        StrictEngine { map: self }
+    }
+
+    fn coalesced_engine(&self) -> CoalescedEngine<'_, K, V, H> {
+        CoalescedEngine { map: self }
+    }
+
+    #[cfg(not(feature = "loom"))]
+    fn strict_arc_engine(self: &Arc<Self>) -> StrictArcEngine<K, V, H>
+    where
+        K: Send + Sync + 'static,
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        StrictArcEngine { map: self.clone() }
+    }
+
+    #[cfg(not(feature = "loom"))]
+    fn coalesced_arc_engine(self: &Arc<Self>) -> CoalescedArcEngine<K, V, H>
+    where
+        K: Send + Sync + 'static,
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        CoalescedArcEngine { map: self.clone() }
+    }
+
+    pub fn low_level(&self) -> LowLevelMap<'_, K, V, H> {
+        LowLevelMap { map: self }
+    }
+
+    pub fn contains<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.read(key, |_, _, _| ()).is_some()
+    }
+
+    fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().visible_ref(key),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().visible_ref(key),
+        }
+    }
+
+    pub fn get_cloned<Q>(&self, key: &Q) -> Option<(V, EntryState)>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+        V: Clone,
+    {
+        self.read(key, |_, value, state| (value.clone(), state))
+    }
+
+    fn get_cloned_full<Q>(&self, key: &Q) -> Option<(V, EntryState, VisibleRef)>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+        V: Clone,
+    {
+        self.read_full(key, |_, value, state, visible| {
+            (value.clone(), state, visible)
+        })
+    }
+
+    pub fn read<Q, R>(&self, key: &Q, reader: impl FnOnce(&K, &V, EntryState) -> R) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.read_full(key, |stored_key, value, state, _visible| {
+            reader(stored_key, value, state)
+        })
+    }
+
+    fn read_full<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&K, &V, EntryState, VisibleRef) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().read_full(key, reader),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().read_full(key, reader),
+        }
+    }
+
     pub fn for_each_prefix(
         &self,
         prefix: &[u8],
-        mut reader: impl FnMut(&K, &V, EntryState, VisibleRef),
+        mut reader: impl FnMut(&K, &V, EntryState),
         limit: usize,
     ) -> usize
     where
@@ -246,10 +1429,7 @@ where
         let keys = self.snapshot_prefix_keys_sorted(prefix, limit);
         let mut matched = 0_usize;
         for key in keys {
-            if self
-                .read(key.borrow(), |k, v, s, vr| reader(k, v, s, vr))
-                .is_some()
-            {
+            if self.read(key.borrow(), |k, v, s| reader(k, v, s)).is_some() {
                 matched += 1;
             }
         }
@@ -271,7 +1451,7 @@ where
         let keys = self.snapshot_prefix_keys_sorted(prefix, limit);
         let mut matched = 0_usize;
         for key in keys {
-            if self.read(key.borrow(), |k, _, _, _| reader(k)).is_some() {
+            if self.read(key.borrow(), |k, _, _| reader(k)).is_some() {
                 matched += 1;
             }
         }
@@ -281,7 +1461,7 @@ where
     pub fn list_prefix<R>(
         &self,
         prefix: &[u8],
-        mut reader: impl FnMut(&K, &V, EntryState, VisibleRef) -> R,
+        mut reader: impl FnMut(&K, &V, EntryState) -> R,
         limit: usize,
     ) -> Vec<R>
     where
@@ -293,80 +1473,85 @@ where
         let mut out = Vec::with_capacity(limit);
         self.for_each_prefix(
             prefix,
-            |key, value, state, visible| {
-                out.push(reader(key, value, state, visible));
+            |key, value, state| {
+                out.push(reader(key, value, state));
             },
             limit,
         );
         out
     }
 
+    pub fn put(&self, key: K, value: V) {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().put(key, value),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().put(key, value),
+        }
+    }
+
+    pub fn put_batch(&self, entries: Vec<(K, V)>) -> usize {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().put_batch(entries),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().put_batch(entries),
+        }
+    }
+
+    /// Materialize a stable sorted snapshot of currently visible matching keys
+    /// and pass it to the caller.
+    ///
+    /// This is the prefix/list read boundary: it does not flush dirty data.
+    pub fn with_prefix_snapshot<R>(
+        &self,
+        prefix: &[u8],
+        limit: usize,
+        reader: impl FnOnce(&[K]) -> R,
+    ) -> R
+    where
+        K: Borrow<[u8]>,
+    {
+        let keys = self.snapshot_prefix_keys_sorted(prefix, limit);
+        reader(keys.as_slice())
+    }
+
     fn snapshot_prefix_keys_sorted(&self, prefix: &[u8], limit: usize) -> Vec<K>
     where
         K: Borrow<[u8]>,
     {
-        if limit == 0 {
-            return Vec::new();
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self
+                .strict_engine()
+                .snapshot_prefix_keys_sorted(prefix, limit),
+            DirtyWriteMode::CoalescedMap => self
+                .coalesced_engine()
+                .snapshot_prefix_keys_sorted(prefix, limit),
         }
-        let mut keys = Vec::with_capacity(limit.min(1024));
-        self.visible.iter_sync(|_, visible| {
-            if keys.len() >= limit {
-                return false;
-            }
-            let key = match visible {
-                VisibleValue::Dirty(record) => &record.key,
-                VisibleValue::Clean(record) => &record.key,
-            };
-            if key.borrow().starts_with(prefix) {
-                keys.push(key.clone());
-            }
-            keys.len() < limit
-        });
-        keys.sort_unstable_by(|left, right| left.borrow().cmp(right.borrow()));
-        keys
     }
 
-    pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
+    fn insert_dirty(&self, key: K, value: V) -> WriteId {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().insert_dirty(key, value),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().insert_dirty(key, value),
+        }
+    }
+
+    fn insert_dirty_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().insert_dirty_batch(entries),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().insert_dirty_batch(entries),
+        }
+    }
+
+    fn insert_dirty_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
         match self.dirty_write_mode {
             DirtyWriteMode::StrictLog => {
-                let record = self.dirty_mode.append(key, value);
-                let id = record.id;
-                self.publish_dirty_record(record);
-                id
+                self.strict_engine().insert_dirty_batch_without_ids(entries)
             }
-            DirtyWriteMode::CoalescedMap => self.publish_coalesced_write(key, value),
+            DirtyWriteMode::CoalescedMap => self
+                .coalesced_engine()
+                .insert_dirty_batch_without_ids(entries),
         }
     }
 
-    pub fn insert_dirty_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
-        if entries.is_empty() {
-            return Vec::new();
-        }
-
-        // Keep the reservation guard alive across the full batch publication.
-        let _reserved = self.visible.reserve(entries.len());
-
-        match self.dirty_write_mode {
-            DirtyWriteMode::StrictLog => self.insert_dirty_batch_strict(entries),
-            DirtyWriteMode::CoalescedMap => self.insert_dirty_batch_coalesced(entries),
-        }
-    }
-
-    pub fn insert_dirty_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
-        if entries.is_empty() {
-            return 0;
-        }
-
-        // Keep the reservation guard alive across the full batch publication.
-        let _reserved = self.visible.reserve(entries.len());
-
-        match self.dirty_write_mode {
-            DirtyWriteMode::StrictLog => self.insert_dirty_batch_strict_without_ids(entries),
-            DirtyWriteMode::CoalescedMap => self.insert_dirty_batch_coalesced_without_ids(entries),
-        }
-    }
-
-    pub fn upsert_dirty(&self, key: K, value: V) -> WriteId {
+    fn upsert_dirty(&self, key: K, value: V) -> WriteId {
         self.insert_dirty(key, value)
     }
 
@@ -374,6 +1559,18 @@ where
         let id = self.next_cache.fetch_add(1, Ordering::Relaxed);
         let record = Arc::new(CleanRecord { id, key, value });
         let visible = VisibleValue::Clean(record.clone());
+        let _coalesced_publish = match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => None,
+            DirtyWriteMode::CoalescedMap => Some(lock(&self.coalesced.active_publish)),
+        };
+        if _coalesced_publish.is_some()
+            && self
+                .coalesced
+                .read_visible_ref(record.key.borrow())
+                .is_some()
+        {
+            return None;
+        }
         let inserted = match self.visible.entry_sync(record.key.clone()) {
             MapEntry::Vacant(vacant) => {
                 vacant.insert_entry(visible);
@@ -415,60 +1612,138 @@ where
         self.cleanup_stale_visible_matching(key, visible_ref)
     }
 
-    pub fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+    /// Flush pending dirty data through the common persist callback surface.
+    ///
+    /// The callback receives a [`PersistBatch`] with key/value access only.
+    /// Use [`CacheLogMap::low_level`] only when the caller needs the id-bearing
+    /// flush path.
+    pub fn with_flush_batch<E>(
+        &self,
+        limit: usize,
+        persist: impl FnOnce(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
         match self.dirty_write_mode {
-            DirtyWriteMode::StrictLog => self.dirty_mode.flush_batch(limit),
-            DirtyWriteMode::CoalescedMap => self.flush_batch_coalesced(limit),
-        }
-    }
-
-    pub fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
-        match self.dirty_write_mode {
-            DirtyWriteMode::StrictLog => match self.dirty_mode.wait_for_flush_work(limit) {
-                DirtyFlushWork::Batch(batch) => FlushWork::Batch(batch),
-                DirtyFlushWork::ForceFlush => FlushWork::ForceFlush,
-            },
+            DirtyWriteMode::StrictLog => self.strict_engine().with_flush_batch(limit, persist),
             DirtyWriteMode::CoalescedMap => {
-                let batch = self.flush_batch_coalesced(limit);
-                if batch.is_empty() {
-                    FlushWork::ForceFlush
-                } else {
-                    FlushWork::Batch(batch)
-                }
+                self.coalesced_engine().with_flush_batch(limit, persist)
             }
         }
     }
 
-    pub fn signal_force_flush(&self) {
-        if matches!(self.dirty_write_mode, DirtyWriteMode::StrictLog) {
-            self.dirty_mode.signal_force_flush();
+    /// Repeatedly flush pending dirty data through the common persist callback
+    /// surface until no backlog remains.
+    pub fn flush_now<E>(
+        &self,
+        limit: usize,
+        persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().flush_now(limit, persist),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().flush_now(limit, persist),
         }
     }
 
-    pub fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+    /// Flush pending dirty data, then run the provided scan.
+    ///
+    /// This is the persisted-scan boundary for callers that need their scan to
+    /// agree with the durable store rather than the overlay alone.
+    /// Flush pending dirty data through the common persist callback surface,
+    /// then run a scan that must agree with persisted state.
+    pub fn with_persisted_scan<R, E>(
+        &self,
+        flush_limit: usize,
+        persist: impl FnMut(&PersistBatch<K, V>) -> Result<(), E>,
+        scan: impl FnOnce() -> Result<R, E>,
+    ) -> Result<R, E> {
         match self.dirty_write_mode {
             DirtyWriteMode::StrictLog => {
-                let marked = self.dirty_mode.mark_flushed(batch);
-                if marked == 0 {
-                    return 0;
-                }
-
-                if let Some(last_id) = batch.last_id() {
-                    self.advance_strict_flushed_upto(last_id);
-                }
-                let strict_flushed_upto = self.strict_flushed_upto.load(Ordering::SeqCst);
-
-                for record in batch.entries.iter() {
-                    let _ = self
-                        .visible
-                        .remove_if_sync(&record.key, |visible| match visible {
-                            VisibleValue::Dirty(current) => current.id <= strict_flushed_upto,
-                            VisibleValue::Clean(_) => true,
-                        });
-                }
-                marked
+                self.strict_engine()
+                    .with_persisted_scan(flush_limit, persist, scan)
             }
-            DirtyWriteMode::CoalescedMap => self.mark_flushed_coalesced(batch),
+            DirtyWriteMode::CoalescedMap => {
+                self.coalesced_engine()
+                    .with_persisted_scan(flush_limit, persist, scan)
+            }
+        }
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush(
+        self: &Arc<Self>,
+        config: BackgroundFlushConfig,
+        persist: impl Fn(&PersistBatch<K, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        K: Send + Sync + 'static,
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        let service = match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_arc_engine().background_flush_service(persist),
+            DirtyWriteMode::CoalescedMap => self
+                .coalesced_arc_engine()
+                .background_flush_service(persist),
+        };
+        BackgroundFlushHandle::start_with_service(config, service)
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush_default(
+        self: &Arc<Self>,
+        persist: impl Fn(&PersistBatch<K, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        K: Send + Sync + 'static,
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        self.start_background_flush(BackgroundFlushConfig::default(), persist)
+    }
+
+    #[cfg(not(feature = "loom"))]
+    pub fn start_background_flush_for_batch_size(
+        self: &Arc<Self>,
+        batch_size: usize,
+        persist: impl Fn(&PersistBatch<K, V>) -> Result<(), String> + Send + Sync + 'static,
+    ) -> BackgroundFlushHandle
+    where
+        K: Send + Sync + 'static,
+        V: Send + Sync + 'static,
+        H: Send + Sync + 'static,
+    {
+        self.start_background_flush(BackgroundFlushConfig::for_batch_size(batch_size), persist)
+    }
+
+    /// Acquire a low-level id-bearing flush batch.
+    ///
+    /// This is intended for strict/debug callers and explicit flush-control
+    /// paths. Common product-facing persistence should use [`with_flush_batch`],
+    /// [`flush_now`], or [`with_persisted_scan`] instead.
+    fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().flush_batch(limit),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().flush_batch(limit),
+        }
+    }
+
+    fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().wait_flush_work(limit),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().wait_flush_work(limit),
+        }
+    }
+
+    fn signal_force_flush(&self) {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().signal_force_flush(),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().signal_force_flush(),
+        }
+    }
+
+    fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => self.strict_engine().mark_flushed(batch),
+            DirtyWriteMode::CoalescedMap => self.coalesced_engine().mark_flushed(batch),
         }
     }
 
@@ -477,6 +1752,15 @@ where
         K: Borrow<Q>,
         Q: Eq + Hash + ?Sized,
     {
+        if self.dirty_write_mode == DirtyWriteMode::CoalescedMap
+            && matches!(expected, VisibleRef::Dirty(_))
+            && self
+                .coalesced
+                .read_visible_ref(key)
+                .is_some_and(|current| current == expected)
+        {
+            return true;
+        }
         self.visible
             .remove_if_sync(key, |visible| visible.visible_ref() == expected)
             .is_some()
@@ -546,22 +1830,13 @@ where
         }
 
         if !has_duplicate {
-            let mut ids = Vec::with_capacity(entries.len());
-            for (key, value) in entries {
-                ids.push(self.publish_coalesced_write(key, value));
-            }
-            return ids;
+            return self.publish_coalesced_batch(entries);
         }
 
-        let mut latest = AHashMap::with_capacity(entries.len());
-        for (key, value) in entries {
-            let _ = latest.insert(key, value);
-        }
-
-        let mut ids = Vec::with_capacity(latest.len());
-        for (key, value) in latest {
-            ids.push(self.publish_coalesced_write(key, value));
-        }
+        let mut scratch = self.take_coalesced_compact_scratch(entries.len());
+        Self::compact_last_write_wins_into(entries, &mut scratch);
+        let ids = self.publish_coalesced_batch_from_scratch(&mut scratch.compacted);
+        self.return_coalesced_compact_scratch(scratch);
         ids
     }
 
@@ -580,52 +1855,197 @@ where
         }
 
         if !has_duplicate {
-            let len = entries.len();
-            for (key, value) in entries {
-                let _ = self.publish_coalesced_write(key, value);
-            }
-            return len;
+            return self.publish_coalesced_batch_without_ids(entries);
         }
 
-        let mut latest = AHashMap::with_capacity(entries.len());
+        let mut scratch = self.take_coalesced_compact_scratch(entries.len());
+        Self::compact_last_write_wins_into(entries, &mut scratch);
+        let written = self.publish_coalesced_batch_without_ids_from_scratch(&mut scratch.compacted);
+        self.return_coalesced_compact_scratch(scratch);
+        written
+    }
+
+    fn compact_last_write_wins_into(
+        entries: Vec<(K, V)>,
+        scratch: &mut CoalescedCompactScratch<K, V>,
+    ) {
+        // Hash to retained-slot mapping avoids cloning owned keys into the
+        // duplicate-detection map while preserving full Eq semantics.
+        scratch.ensure_capacity(entries.len());
+        scratch.clear();
         for (key, value) in entries {
-            let _ = latest.insert(key, value);
+            let fingerprint = scratch.fingerprint_hasher.hash_one(&key);
+            match scratch.latest_slot.entry(fingerprint) {
+                std::collections::hash_map::Entry::Occupied(mut occupied) => match occupied
+                    .get_mut()
+                {
+                    DedupeSlots::One(slot) => {
+                        if scratch.compacted[*slot].0 == key {
+                            scratch.compacted[*slot].1 = value;
+                        } else {
+                            let next_slot = scratch.compacted.len();
+                            let prior_slot = *slot;
+                            *occupied.get_mut() = DedupeSlots::Many(vec![prior_slot, next_slot]);
+                            scratch.compacted.push((key, value));
+                        }
+                    }
+                    DedupeSlots::Many(slots) => {
+                        if let Some(existing_slot) = slots
+                            .iter()
+                            .copied()
+                            .find(|slot| scratch.compacted[*slot].0 == key)
+                        {
+                            scratch.compacted[existing_slot].1 = value;
+                        } else {
+                            let next_slot = scratch.compacted.len();
+                            slots.push(next_slot);
+                            scratch.compacted.push((key, value));
+                        }
+                    }
+                },
+                std::collections::hash_map::Entry::Vacant(vacant) => {
+                    let next_slot = scratch.compacted.len();
+                    vacant.insert(DedupeSlots::One(next_slot));
+                    scratch.compacted.push((key, value));
+                }
+            }
+        }
+    }
+
+    fn publish_coalesced_active(&self, key: K, id: WriteId, value: V) -> bool {
+        let _publish = lock(&self.coalesced.active_publish);
+        self.remove_visible_clean_if_present(&key);
+        self.coalesced.publish_active_locked(key, id, value)
+    }
+
+    fn publish_coalesced_single_write(&self, key: K, value: V) -> WriteId {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let write_id_started = coalesced_perf_enabled().then(StdInstant::now);
+        let id = self.next_write_id();
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = write_id_started {
+            PERF_COALESCED_SINGLE_WRITE_ID_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
         }
 
-        let len = latest.len();
-        for (key, value) in latest {
-            let _ = self.publish_coalesced_write(key, value);
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let remove_clean_started = coalesced_perf_enabled().then(StdInstant::now);
+        let inserted = self.publish_coalesced_active(key, id, value);
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = remove_clean_started {
+            PERF_COALESCED_SINGLE_REMOVE_CLEAN_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        let _ = inserted;
+        id
+    }
+
+    fn publish_coalesced_single_write_without_id(&self, key: K, value: V) {
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        let remove_clean_started = coalesced_perf_enabled().then(StdInstant::now);
+        self.coalesced_has_unassigned_ids
+            .store(1, Ordering::Release);
+        let inserted = self.publish_coalesced_active(key, COALESCED_UNASSIGNED_WRITE_ID, value);
+        #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
+        if let Some(started) = remove_clean_started {
+            PERF_COALESCED_SINGLE_REMOVE_CLEAN_NS_TOTAL
+                .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
+        }
+        let _ = inserted;
+    }
+
+    fn publish_coalesced_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
+        if entries.is_empty() {
+            return Vec::new();
+        }
+
+        let len = entries.len();
+        let id_base = self.reserve_write_ids(len);
+        let mut ids = Vec::with_capacity(len);
+        for (offset, (key, value)) in entries.into_iter().enumerate() {
+            let id = id_base.wrapping_add(offset as u64);
+            let _ = self.publish_coalesced_active(key, id, value);
+            ids.push(id);
+        }
+        ids
+    }
+
+    fn publish_coalesced_batch_from_scratch(&self, entries: &mut Vec<(K, V)>) -> Vec<WriteId> {
+        if entries.is_empty() {
+            return Vec::new();
+        }
+
+        let len = entries.len();
+        let id_base = self.reserve_write_ids(len);
+        let mut ids = Vec::with_capacity(len);
+        for (offset, (key, value)) in entries.drain(..).enumerate() {
+            let id = id_base.wrapping_add(offset as u64);
+            let _ = self.publish_coalesced_active(key, id, value);
+            ids.push(id);
+        }
+        ids
+    }
+
+    fn publish_coalesced_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
+        if entries.is_empty() {
+            return 0;
+        }
+
+        let len = entries.len();
+        let id_base = self.reserve_write_ids(len);
+        for (offset, (key, value)) in entries.into_iter().enumerate() {
+            let id = id_base.wrapping_add(offset as u64);
+            let _ = self.publish_coalesced_active(key, id, value);
         }
         len
     }
 
-    fn publish_coalesced_write(&self, key: K, value: V) -> WriteId {
-        let id = self.next_write_id();
-        let record = Arc::new(DirtyRecord { id, key, value });
-        self.publish_dirty_record_coalesced(record);
-        id
+    fn publish_coalesced_batch_without_ids_from_scratch(&self, entries: &mut Vec<(K, V)>) -> usize {
+        if entries.is_empty() {
+            return 0;
+        }
+
+        let len = entries.len();
+        let id_base = self.reserve_write_ids(len);
+        for (offset, (key, value)) in entries.drain(..).enumerate() {
+            let id = id_base.wrapping_add(offset as u64);
+            let _ = self.publish_coalesced_active(key, id, value);
+        }
+        len
     }
 
-    fn publish_dirty_record_coalesced(&self, record: Arc<DirtyRecord<K, V>>) {
-        let visible_key = record.key.clone();
-        let visible = VisibleValue::Dirty(record);
-        match self.visible.entry_sync(visible_key) {
-            MapEntry::Occupied(mut occupied) => {
-                if matches!(occupied.get(), VisibleValue::Clean(_)) {
-                    self.clean_count.fetch_sub(1, Ordering::Relaxed);
-                    self.coalesced_dirty_count.fetch_add(1, Ordering::Relaxed);
-                }
-                let _ = occupied.insert(visible);
-            }
-            MapEntry::Vacant(vacant) => {
-                vacant.insert_entry(visible);
-                self.coalesced_dirty_count.fetch_add(1, Ordering::Relaxed);
-            }
+    fn remove_visible_clean_if_present<Q>(&self, key: &Q)
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        if self.clean_count.load(Ordering::Relaxed) == 0 {
+            return;
+        }
+        if self
+            .visible
+            .remove_if_sync(key, |visible| matches!(visible, VisibleValue::Clean(_)))
+            .is_some()
+        {
+            self.clean_count.fetch_sub(1, Ordering::Relaxed);
         }
     }
 
     fn next_write_id(&self) -> WriteId {
         self.next_dirty_write.fetch_add(1, Ordering::Relaxed)
+    }
+
+    fn reserve_write_ids(&self, count: usize) -> WriteId {
+        self.next_dirty_write
+            .fetch_add(count as u64, Ordering::Relaxed)
+    }
+
+    fn take_coalesced_compact_scratch(&self, capacity: usize) -> CoalescedCompactScratch<K, V> {
+        self.coalesced.take_compact_scratch(capacity)
+    }
+
+    fn return_coalesced_compact_scratch(&self, scratch: CoalescedCompactScratch<K, V>) {
+        self.coalesced.return_compact_scratch(scratch);
     }
 
     fn is_strict_flushed(&self, id: WriteId) -> bool {
@@ -656,76 +2076,60 @@ where
             return FlushBatch::new(Vec::new());
         }
 
-        {
-            let inflight = lock(&self.coalesced_inflight);
-            if let Some(batch) = inflight.as_ref() {
-                return batch.clone();
-            }
-        }
-
-        let mut entries = Vec::with_capacity(limit);
-        self.visible.iter_sync(|_, visible| {
-            if entries.len() >= limit {
-                return false;
-            }
-            if let VisibleValue::Dirty(record) = visible {
-                entries.push(record.clone());
-            }
-            entries.len() < limit
-        });
-
-        let batch = FlushBatch::new(entries);
-        if batch.is_empty() {
-            return batch;
-        }
-
-        let mut inflight = lock(&self.coalesced_inflight);
+        let mut inflight = lock(&self.coalesced.inflight);
         if let Some(current) = inflight.as_ref() {
-            return current.clone();
+            return current.batch.clone();
         }
-        *inflight = Some(batch.clone());
+
+        let _publish = lock(&self.coalesced.active_publish);
+        self.coalesced.ensure_draining_snapshot_locked();
+        let mut entries = self.coalesced.begin_snapshot_drain_batch(limit);
+        if entries.is_empty() {
+            return FlushBatch::new(Vec::new());
+        }
+        if self.coalesced_has_unassigned_ids.load(Ordering::Acquire) != 0 {
+            let mut unassigned = 0_u64;
+            for record in &entries {
+                if record.id == COALESCED_UNASSIGNED_WRITE_ID {
+                    unassigned += 1;
+                }
+            }
+            if unassigned > 0 {
+                let id_base = self.reserve_write_ids(unassigned as usize);
+                let mut offset = 0_u64;
+                for record in &mut entries {
+                    if record.id == COALESCED_UNASSIGNED_WRITE_ID {
+                        record.id = id_base.wrapping_add(offset);
+                        offset = offset.wrapping_add(1);
+                    }
+                }
+            }
+        }
+        let batch = FlushBatch::new_owned(entries);
+
+        let current = Arc::new(CoalescedInflight {
+            batch: batch.clone(),
+            index: CoalescedOverlay::<K, V, H>::build_inflight_index(&batch),
+        });
+        self.coalesced.inflight_shared.store(Some(current.clone()));
+        *inflight = Some(current);
         batch
     }
 
     fn mark_flushed_coalesced(&self, batch: &FlushBatch<K, V>) -> usize {
-        let mut inflight = lock(&self.coalesced_inflight);
-        let Some(current) = inflight.as_ref() else {
-            return 0;
-        };
-        if !Self::same_batch_ids(current, batch) {
-            return 0;
-        }
-        let drained = inflight.take().expect("coalesced inflight vanished");
-        drop(inflight);
-
-        let mut removed = 0_usize;
-        for record in drained.entries.iter() {
-            let id = record.id;
-            if self
-                .visible
-                .remove_if_sync(
-                    &record.key,
-                    |visible| matches!(visible, VisibleValue::Dirty(current) if current.id == id),
-                )
-                .is_some()
-            {
-                removed += 1;
-            }
-        }
-        if removed != 0 {
-            self.coalesced_dirty_count
-                .fetch_sub(removed, Ordering::Relaxed);
-        }
-        drained.len()
+        self.coalesced.mark_flushed_if_current(batch)
     }
 
-    fn same_batch_ids(left: &FlushBatch<K, V>, right: &FlushBatch<K, V>) -> bool {
-        left.len() == right.len()
-            && left
-                .entries
-                .iter()
-                .zip(right.entries.iter())
-                .all(|(l, r)| l.id == r.id)
+    fn read_coalesced_inflight<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&DirtyRecord<K, V>) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.coalesced.read_inflight(key, reader)
     }
 
     fn enqueue_clean(&self, key: K, id: CacheId) {
@@ -749,15 +2153,195 @@ where
     }
 }
 
+impl<K, V, H> LowLevelMap<'_, K, V, H>
+where
+    K: Clone + Eq + Hash,
+    H: BuildHasher + Clone,
+{
+    pub fn visible_ref<Q>(&self, key: &Q) -> Option<VisibleRef>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.map.visible_ref(key)
+    }
+
+    pub fn get_cloned_full<Q>(&self, key: &Q) -> Option<(V, EntryState, VisibleRef)>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+        V: Clone,
+    {
+        self.map.get_cloned_full(key)
+    }
+
+    pub fn read_full<Q, R>(
+        &self,
+        key: &Q,
+        reader: impl FnOnce(&K, &V, EntryState, VisibleRef) -> R,
+    ) -> Option<R>
+    where
+        K: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.map.read_full(key, reader)
+    }
+
+    pub fn insert_dirty(&self, key: K, value: V) -> WriteId {
+        self.map.insert_dirty(key, value)
+    }
+
+    pub fn insert_dirty_batch(&self, entries: Vec<(K, V)>) -> Vec<WriteId> {
+        self.map.insert_dirty_batch(entries)
+    }
+
+    pub fn insert_dirty_batch_without_ids(&self, entries: Vec<(K, V)>) -> usize {
+        self.map.insert_dirty_batch_without_ids(entries)
+    }
+
+    pub fn upsert_dirty(&self, key: K, value: V) -> WriteId {
+        self.map.upsert_dirty(key, value)
+    }
+
+    pub fn flush_batch(&self, limit: usize) -> FlushBatch<K, V> {
+        self.map.flush_batch(limit)
+    }
+
+    pub fn wait_flush_work(&self, limit: usize) -> FlushWork<K, V> {
+        self.map.wait_flush_work(limit)
+    }
+
+    pub fn signal_force_flush(&self) {
+        self.map.signal_force_flush();
+    }
+
+    pub fn mark_flushed(&self, batch: &FlushBatch<K, V>) -> usize {
+        self.map.mark_flushed(batch)
+    }
+}
+
+impl<V, H> CacheLogMap<Vec<u8>, V, H>
+where
+    H: BuildHasher + Clone,
+{
+    fn borrowed_batch_has_duplicates(entries: &[(&[u8], &[u8])]) -> bool {
+        if entries.len() < 2 {
+            return false;
+        }
+
+        let mut ordered_unique = true;
+        for window in entries.windows(2) {
+            if window[0].0 >= window[1].0 {
+                ordered_unique = false;
+                break;
+            }
+        }
+        if ordered_unique {
+            return false;
+        }
+
+        let mut seen = AHashSet::with_capacity(entries.len());
+        for (key, _) in entries {
+            if !seen.insert(*key) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn publish_coalesced_borrowed_batch_without_ids<'a, F>(
+        &self,
+        entries: Vec<(&'a [u8], &'a [u8])>,
+        mut make_value: F,
+    ) -> usize
+    where
+        F: FnMut(&'a [u8]) -> V,
+    {
+        if entries.is_empty() {
+            return 0;
+        }
+
+        let len = entries.len();
+        let id_base = self.reserve_write_ids(len);
+        let _publish = lock(&self.coalesced.active_publish);
+        for (offset, (key, raw_value)) in entries.into_iter().enumerate() {
+            let id = id_base.wrapping_add(offset as u64);
+            self.remove_visible_clean_if_present(key);
+            let _ = self
+                .coalesced
+                .update_or_insert(key, key.to_vec(), id, make_value(raw_value));
+        }
+        len
+    }
+
+    fn compact_and_publish_coalesced_borrowed_batch_without_ids<'a, F>(
+        &self,
+        entries: Vec<(&'a [u8], &'a [u8])>,
+        mut make_value: F,
+    ) -> usize
+    where
+        F: FnMut(&'a [u8]) -> V,
+    {
+        if entries.is_empty() {
+            return 0;
+        }
+
+        with_borrowed_coalesced_keys(|scratch_keys| {
+            let mut latest_slot: AHashMap<&'a [u8], usize> = AHashMap::with_capacity(entries.len());
+            let mut values: Vec<Option<V>> = Vec::with_capacity(entries.len());
+            let mut used = 0_usize;
+
+            for (key, raw_value) in entries {
+                if let Some(&slot) = latest_slot.get(key) {
+                    values[slot] = Some(make_value(raw_value));
+                    continue;
+                }
+
+                latest_slot.insert(key, used);
+                if used == scratch_keys.len() {
+                    scratch_keys.push(key.to_vec());
+                } else {
+                    let scratch_key = &mut scratch_keys[used];
+                    scratch_key.clear();
+                    scratch_key.extend_from_slice(key);
+                }
+
+                if used == values.len() {
+                    values.push(Some(make_value(raw_value)));
+                } else {
+                    values[used] = Some(make_value(raw_value));
+                }
+                used += 1;
+            }
+
+            let id_base = self.reserve_write_ids(used);
+            let _publish = lock(&self.coalesced.active_publish);
+            for slot in 0..used {
+                let id = id_base.wrapping_add(slot as u64);
+                let key = scratch_keys[slot].as_slice();
+                self.remove_visible_clean_if_present(key);
+                let value = values[slot]
+                    .take()
+                    .expect("borrowed compacted value should exist");
+                let _ = self
+                    .coalesced
+                    .update_or_insert(key, scratch_keys[slot].clone(), id, value);
+            }
+
+            used
+        })
+    }
+}
+
 impl<H> CacheLogMap<Vec<u8>, Vec<u8>, H>
 where
     H: BuildHasher + Clone,
 {
-    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+    fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
         self.insert_dirty(key.to_vec(), value.to_vec())
     }
 
-    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
     where
         I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
     {
@@ -776,26 +2360,31 @@ where
                 len
             }
             DirtyWriteMode::CoalescedMap => {
-                let mut count = 0_usize;
-                for (key, value) in entries {
-                    let _ = self.publish_coalesced_write(key.to_vec(), value.to_vec());
-                    count = count.saturating_add(1);
+                let entries: Vec<_> = entries.into_iter().collect();
+                if !Self::borrowed_batch_has_duplicates(&entries) {
+                    return self.publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                        value.to_vec()
+                    });
                 }
-                count
+
+                self.compact_and_publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                    value.to_vec()
+                })
             }
         }
     }
 }
 
+#[cfg(any(test, feature = "dev-tools"))]
 impl<H> CacheLogMap<Vec<u8>, Arc<Vec<u8>>, H>
 where
     H: BuildHasher + Clone,
 {
-    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+    fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
         self.insert_dirty(key.to_vec(), Arc::new(value.to_vec()))
     }
 
-    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
     where
         I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
     {
@@ -814,14 +2403,260 @@ where
                 len
             }
             DirtyWriteMode::CoalescedMap => {
-                let mut count = 0_usize;
-                for (key, value) in entries {
-                    let _ = self.publish_coalesced_write(key.to_vec(), Arc::new(value.to_vec()));
-                    count = count.saturating_add(1);
+                let entries: Vec<_> = entries.into_iter().collect();
+                if !Self::borrowed_batch_has_duplicates(&entries) {
+                    return self.publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                        Arc::new(value.to_vec())
+                    });
                 }
-                count
+
+                self.compact_and_publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                    Arc::new(value.to_vec())
+                })
             }
         }
+    }
+}
+
+#[cfg(all(not(feature = "loom"), any(test, feature = "dev-tools")))]
+impl<H> CacheLogMap<Vec<u8>, Arc<[u8]>, H>
+where
+    H: BuildHasher + Clone,
+{
+    fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.insert_dirty(key.to_vec(), Arc::<[u8]>::from(value.to_vec()))
+    }
+
+    fn insert_dirty_preowned(&self, key: Vec<u8>, value: Arc<[u8]>) -> WriteId {
+        self.insert_dirty(key, value)
+    }
+
+    fn insert_dirty_batch_preowned_without_ids(&self, entries: Vec<(Vec<u8>, Arc<[u8]>)>) -> usize {
+        self.insert_dirty_batch_without_ids(entries)
+    }
+
+    fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => {
+                let records = self.dirty_mode.append_batch_borrowed(entries);
+                if records.is_empty() {
+                    return 0;
+                }
+
+                let _reserved = self.visible.reserve(records.len());
+                let len = records.len();
+                for record in records {
+                    self.publish_dirty_record(record);
+                }
+                len
+            }
+            DirtyWriteMode::CoalescedMap => {
+                let entries: Vec<_> = entries.into_iter().collect();
+                if !Self::borrowed_batch_has_duplicates(&entries) {
+                    return self.publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                        Arc::<[u8]>::from(value.to_vec())
+                    });
+                }
+
+                self.compact_and_publish_coalesced_borrowed_batch_without_ids(entries, |value| {
+                    Arc::<[u8]>::from(value.to_vec())
+                })
+            }
+        }
+    }
+}
+
+#[cfg(any(test, feature = "dev-tools"))]
+impl<H> CacheLogMap<Vec<u8>, Bytes, H>
+where
+    H: BuildHasher + Clone,
+{
+    fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.insert_dirty(key.to_vec(), bytes_from_borrowed(value))
+    }
+
+    fn insert_dirty_owned_key_borrowed_value(&self, key: Vec<u8>, value: &[u8]) -> WriteId {
+        self.insert_dirty(key, bytes_from_borrowed(value))
+    }
+
+    fn insert_dirty_preowned(&self, key: Vec<u8>, value: Bytes) -> WriteId {
+        self.insert_dirty(key, value)
+    }
+
+    fn insert_dirty_batch_owned_keys_borrowed_values_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (Vec<u8>, &'a [u8])>,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => {
+                let records = self.dirty_mode.append_batch(
+                    entries
+                        .into_iter()
+                        .map(|(key, value)| (key, bytes_from_borrowed(value)))
+                        .collect(),
+                );
+                if records.is_empty() {
+                    return 0;
+                }
+
+                let _reserved = self.visible.reserve(records.len());
+                let len = records.len();
+                for record in records {
+                    self.publish_dirty_record(record);
+                }
+                len
+            }
+            DirtyWriteMode::CoalescedMap => {
+                let owned = entries
+                    .into_iter()
+                    .map(|(key, value)| (key, bytes_from_borrowed(value)))
+                    .collect();
+                self.insert_dirty_batch_coalesced_without_ids(owned)
+            }
+        }
+    }
+
+    fn insert_dirty_batch_preowned_without_ids(&self, entries: Vec<(Vec<u8>, Bytes)>) -> usize {
+        self.insert_dirty_batch_without_ids(entries)
+    }
+
+    fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        match self.dirty_write_mode {
+            DirtyWriteMode::StrictLog => {
+                let records = self.dirty_mode.append_batch_borrowed(entries);
+                if records.is_empty() {
+                    return 0;
+                }
+
+                let _reserved = self.visible.reserve(records.len());
+                let len = records.len();
+                for record in records {
+                    self.publish_dirty_record(record);
+                }
+                len
+            }
+            DirtyWriteMode::CoalescedMap => {
+                let entries: Vec<_> = entries.into_iter().collect();
+                if !Self::borrowed_batch_has_duplicates(&entries) {
+                    return self.publish_coalesced_borrowed_batch_without_ids(
+                        entries,
+                        bytes_from_borrowed,
+                    );
+                }
+
+                self.compact_and_publish_coalesced_borrowed_batch_without_ids(
+                    entries,
+                    bytes_from_borrowed,
+                )
+            }
+        }
+    }
+}
+
+impl<H> LowLevelMap<'_, Vec<u8>, Vec<u8>, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.map.insert_dirty_borrowed(key, value)
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        self.map.insert_dirty_batch_borrowed_without_ids(entries)
+    }
+}
+
+#[cfg(any(test, feature = "dev-tools"))]
+impl<H> LowLevelMap<'_, Vec<u8>, Arc<Vec<u8>>, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.map.insert_dirty_borrowed(key, value)
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        self.map.insert_dirty_batch_borrowed_without_ids(entries)
+    }
+}
+
+#[cfg(all(not(feature = "loom"), any(test, feature = "dev-tools")))]
+impl<H> LowLevelMap<'_, Vec<u8>, Arc<[u8]>, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.map.insert_dirty_borrowed(key, value)
+    }
+
+    pub fn insert_dirty_preowned(&self, key: Vec<u8>, value: Arc<[u8]>) -> WriteId {
+        self.map.insert_dirty_preowned(key, value)
+    }
+
+    pub fn insert_dirty_batch_preowned_without_ids(
+        &self,
+        entries: Vec<(Vec<u8>, Arc<[u8]>)>,
+    ) -> usize {
+        self.map.insert_dirty_batch_preowned_without_ids(entries)
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        self.map.insert_dirty_batch_borrowed_without_ids(entries)
+    }
+}
+
+#[cfg(any(test, feature = "dev-tools"))]
+impl<H> LowLevelMap<'_, Vec<u8>, Bytes, H>
+where
+    H: BuildHasher + Clone,
+{
+    pub fn insert_dirty_borrowed(&self, key: &[u8], value: &[u8]) -> WriteId {
+        self.map.insert_dirty_borrowed(key, value)
+    }
+
+    pub fn insert_dirty_owned_key_borrowed_value(&self, key: Vec<u8>, value: &[u8]) -> WriteId {
+        self.map.insert_dirty_owned_key_borrowed_value(key, value)
+    }
+
+    pub fn insert_dirty_preowned(&self, key: Vec<u8>, value: Bytes) -> WriteId {
+        self.map.insert_dirty_preowned(key, value)
+    }
+
+    pub fn insert_dirty_batch_owned_keys_borrowed_values_without_ids<'a, I>(
+        &self,
+        entries: I,
+    ) -> usize
+    where
+        I: IntoIterator<Item = (Vec<u8>, &'a [u8])>,
+    {
+        self.map
+            .insert_dirty_batch_owned_keys_borrowed_values_without_ids(entries)
+    }
+
+    pub fn insert_dirty_batch_preowned_without_ids(&self, entries: Vec<(Vec<u8>, Bytes)>) -> usize {
+        self.map.insert_dirty_batch_preowned_without_ids(entries)
+    }
+
+    pub fn insert_dirty_batch_borrowed_without_ids<'a, I>(&self, entries: I) -> usize
+    where
+        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
+    {
+        self.map.insert_dirty_batch_borrowed_without_ids(entries)
     }
 }
 
@@ -859,8 +2694,54 @@ where
     H: BuildHasher + Clone,
 {
     #[doc(hidden)]
-    pub fn debug_snapshot(&self) -> DebugSnapshot<K, V> {
+    fn debug_snapshot(&self) -> DebugSnapshot<K, V> {
         let mut visible = Vec::new();
+        if self.dirty_write_mode == DirtyWriteMode::CoalescedMap {
+            self.coalesced.for_each_active_key(|key| {
+                let record = self
+                    .coalesced
+                    .read_active(key, |_, record| DebugRecord {
+                        id: record.id,
+                        key: key.clone(),
+                        value: record.value.clone(),
+                    })
+                    .expect("active coalesced key vanished during debug snapshot");
+                visible.push((key.clone(), DebugVisible::Dirty(record)));
+            });
+            self.coalesced.with_inflight(|inflight| {
+                if let Some(inflight) = inflight {
+                    for record in inflight.batch.iter() {
+                        if !visible
+                            .iter()
+                            .any(|(existing_key, _)| existing_key == &record.key)
+                        {
+                            visible.push((
+                                record.key.clone(),
+                                DebugVisible::Dirty(DebugRecord {
+                                    id: record.id,
+                                    key: record.key.clone(),
+                                    value: record.value.clone(),
+                                }),
+                            ));
+                        }
+                    }
+                }
+            });
+            self.coalesced.for_each_draining_key(|key| {
+                if visible.iter().any(|(existing_key, _)| existing_key == key) {
+                    return;
+                }
+                let record = self
+                    .coalesced
+                    .read_draining(key, |_, record| DebugRecord {
+                        id: record.id,
+                        key: key.clone(),
+                        value: record.value.clone(),
+                    })
+                    .expect("draining coalesced key vanished during debug snapshot");
+                visible.push((key.clone(), DebugVisible::Dirty(record)));
+            });
+        }
         self.visible.iter_sync(|key, value| {
             let projected = match value {
                 VisibleValue::Dirty(record) => DebugVisible::Dirty(DebugRecord {
@@ -904,20 +2785,21 @@ where
                 (pending, inflight)
             }
             DirtyWriteMode::CoalescedMap => {
-                let inflight_records = lock(&self.coalesced_inflight)
-                    .as_ref()
-                    .map(|batch| {
-                        batch
-                            .entries
-                            .iter()
-                            .map(|record| DebugRecord {
-                                id: record.id,
-                                key: record.key.clone(),
-                                value: record.value.clone(),
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
+                let inflight_records = self.coalesced.with_inflight(|inflight| {
+                    inflight
+                        .map(|inflight| {
+                            inflight
+                                .batch
+                                .iter()
+                                .map(|record| DebugRecord {
+                                    id: record.id,
+                                    key: record.key.clone(),
+                                    value: record.value.clone(),
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default()
+                });
                 let inflight_ids = inflight_records
                     .iter()
                     .map(|record| record.id)
@@ -946,6 +2828,19 @@ where
             next_cache: self.next_cache.load(Ordering::Relaxed),
             clean_count: self.clean_count.load(Ordering::Relaxed),
         }
+    }
+}
+
+#[cfg(any(test, feature = "loom"))]
+impl<K, V, H> LowLevelMap<'_, K, V, H>
+where
+    K: Clone + Eq + Hash + Ord,
+    V: Clone,
+    H: BuildHasher + Clone,
+{
+    #[doc(hidden)]
+    pub fn debug_snapshot(&self) -> DebugSnapshot<K, V> {
+        self.map.debug_snapshot()
     }
 }
 
@@ -1115,7 +3010,7 @@ mod conformance_tests {
                         ))
                     }
                 };
-                let actual_triplet = self.live.read(&key, |_, value, state, visible| {
+                let actual_triplet = self.live.read_full(&key, |_, value, state, visible| {
                     let visible = match visible {
                         VisibleRef::Dirty(id) => ComparableVisibleRef::Dirty(to_core_id(id)),
                         VisibleRef::Clean(id) => ComparableVisibleRef::Clean(to_core_id(id)),

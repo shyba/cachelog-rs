@@ -23,8 +23,67 @@ for that verified surface:
 - conditional clearing only when the flushed record is still the visible one
 - stale clean windows may exist until cleanup
 
+In the live crate, that strict/id-bearing surface is now explicitly treated as
+the low-level API tier:
+
+- common product reads/writes/persist helpers live at the crate root
+- common persistence uses `PersistBatch` key/value callbacks
+- id-bearing `FlushBatch`, `VisibleRef`, and `WriteId` live under
+  `cachelog::low_level`
+
 `DirtyWriteMode::CoalescedMap` is intentionally outside this strict ordered model:
 it is validated with crate tests/loom/proptests as a throughput-focused mode.
+
+That means the model boundary should be read as:
+
+- `cachelog-model` / `cachelog-core` prove and replay the strict ordered state
+  machine
+- the root/common `cachelog-rs` API is broader than that strict proof surface
+- coalesced latest-value behavior is a separate product model validated by live
+  tests today, not by this strict replay model
+
+## Scope Layers
+
+Read the current repository boundary in three layers:
+
+### 1. Strict Ordered Model
+
+Owned here in `cachelog-model` / `cachelog-core`:
+
+- ordered dirty publication identity
+- `VisibleRef`
+- `WriteId`
+- id-bearing `FlushBatch` semantics
+- conditional clear-after-flush rules
+
+This is the layer the current replay model actually proves and replays.
+
+### 2. Common Product Boundary
+
+Owned by the root/common `cachelog-rs` API:
+
+- value/state reads via `EntryState`
+- common persistence via `PersistBatch`
+- persisted-scan helpers and background-flush callbacks that expose key/value
+  batches rather than dirty ids
+
+`PersistBatch` should currently be read as a product-facing projection of
+flushable state, not as a new proved formal object in this strict replay model.
+The current mapping is documented in
+[formal/PersistBatchBoundary.md](/home/user/repos/tableflip-rs/model-cachelog/formal/PersistBatchBoundary.md).
+
+### 3. Coalesced Latest-Value Model
+
+Only sketched here today:
+
+- latest visible value per key
+- snapshot-style persistence semantics
+- collapse of repeated writes before persistence
+- coalesced-specific failure and retry behavior
+
+Today this layer is validated by live tests and design notes, not by the strict
+replay model in this crate. The current placeholder lives at
+[formal/CoalescedLatestValueModel.md](/home/user/repos/tableflip-rs/model-cachelog/formal/CoalescedLatestValueModel.md).
 
 The model stays slightly more permissive than the current live crate on purpose:
 
@@ -37,7 +96,8 @@ current implementation eagerly removes flushed dirty refs and immediate
 
 Important boundary: this crate models and replays the abstract state machine. It
 does not by itself prove the `scc`/`sdd`/`SegQueue` live implementation in
-`cachelog-rs`.
+`cachelog-rs`, and it should not be read as proving the full root/common API
+surface.
 
 ## Default build
 
@@ -59,6 +119,7 @@ cargo +nightly test -p cachelog-model --features tla-connect
 The real TraceSpec for Approach 3 lives at:
 
 - [formal/CacheLogVisibleRefsTrace.tla](/home/user/repos/tableflip-rs/model-cachelog/formal/CacheLogVisibleRefsTrace.tla)
+- [formal/PersistBatchBoundary.md](/home/user/repos/tableflip-rs/model-cachelog/formal/PersistBatchBoundary.md)
 
 Once `apalache-mc` is installed, run the ignored validation test or the helper script:
 

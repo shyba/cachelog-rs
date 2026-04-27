@@ -3,6 +3,8 @@
 This directory contains the TLA+ TraceSpec used by `tla-connect` Approach 3.
 
 - [CacheLogVisibleRefsTrace.tla](/home/user/repos/tableflip-rs/model-cachelog/formal/CacheLogVisibleRefsTrace.tla)
+- [CoalescedLatestValueModel.md](/home/user/repos/tableflip-rs/model-cachelog/formal/CoalescedLatestValueModel.md)
+- [PersistBatchBoundary.md](/home/user/repos/tableflip-rs/model-cachelog/formal/PersistBatchBoundary.md)
 
 Notes:
 - `validate_trace()` writes a generated `TraceData.tla` into a temporary copy of this
@@ -13,3 +15,8 @@ Notes:
   avoids awkward JSON-object map encoding.
 - The current spec is fixed to the small model configuration used by
   [`ModelConfig::tla_small()`](/home/user/repos/tableflip-rs/model-cachelog/src/model.rs).
+- `CoalescedLatestValueModel.md` is a non-executable placeholder for the future
+  coalesced/latest-value model boundary.
+- `PersistBatchBoundary.md` is not an executable spec. It is the current
+  boundary note describing how the root/common `PersistBatch` surface projects
+  from the strict modeled flush state today.

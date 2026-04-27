@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use cachelog::{CacheLogConfig, CacheLogMap, DirtyWriteMode, EntryState, VisibleRef};
+use cachelog::{CacheLogConfig, CacheLogMap, DirtyWriteMode, EntryState};
 use proptest::prelude::*;
 
 fn map_for_mode(mode: DirtyWriteMode) -> CacheLogMap<usize, usize> {
@@ -11,11 +11,11 @@ fn map_for_mode(mode: DirtyWriteMode) -> CacheLogMap<usize, usize> {
 
 fn drain_all(map: &CacheLogMap<usize, usize>) {
     loop {
-        let batch = map.flush_batch(64);
+        let batch = map.low_level().flush_batch(64);
         if batch.is_empty() {
             break;
         }
-        let marked = map.mark_flushed(&batch);
+        let marked = map.low_level().mark_flushed(&batch);
         assert!(marked > 0);
     }
 }
@@ -40,22 +40,19 @@ proptest! {
         for (k, v) in ops {
             let key = usize::from(k);
             let val = usize::from(v);
-            let _ = map.insert_dirty(key, val);
+            let _ = map.low_level().insert_dirty(key, val);
             expected.insert(key, val);
         }
 
         for (k, v) in &expected {
-            let got = map.read(k, |_, value, state, visible| (*value, state, visible));
-            prop_assert!(matches!(
-                got,
-                Some((val, EntryState::Dirty, VisibleRef::Dirty(_))) if val == *v
-            ));
+            let got = map.read(k, |_, value, state| (*value, state));
+            prop_assert_eq!(got, Some((*v, EntryState::Dirty)));
         }
 
         drain_all(&map);
 
         for k in expected.keys() {
-            prop_assert!(map.read(k, |_, value, state, visible| (*value, state, visible)).is_none());
+            prop_assert!(map.read(k, |_, value, state| (*value, state)).is_none());
         }
         prop_assert_eq!(map.dirty_log_len(), 0);
     }
@@ -84,18 +81,15 @@ proptest! {
             owned.push((key, val));
         }
 
-        let inserted = map.insert_dirty_batch_without_ids(owned);
+        let inserted = map.low_level().insert_dirty_batch_without_ids(owned);
         match mode {
             DirtyWriteMode::StrictLog => prop_assert_eq!(inserted, batch.len()),
             DirtyWriteMode::CoalescedMap => prop_assert_eq!(inserted, expected_unique.len()),
         }
 
         for (k, v) in &expected_last {
-            let got = map.read(k, |_, value, state, visible| (*value, state, visible));
-            prop_assert!(matches!(
-                got,
-                Some((val, EntryState::Dirty, VisibleRef::Dirty(_))) if val == *v
-            ));
+            let got = map.read(k, |_, value, state| (*value, state));
+            prop_assert_eq!(got, Some((*v, EntryState::Dirty)));
         }
 
         drain_all(&map);

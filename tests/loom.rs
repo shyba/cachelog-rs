@@ -6,7 +6,8 @@ use loom::sync::Arc;
 use loom::thread;
 use std::hash::{BuildHasher, Hasher};
 
-use cachelog::{CacheLogConfig, CacheLogMap, DirtyWriteMode, EntryState, VisibleRef};
+use cachelog::low_level::VisibleRef;
+use cachelog::{CacheLogConfig, CacheLogMap, DirtyWriteMode, EntryState};
 
 #[derive(Clone, Default)]
 struct DeterministicBuildHasher;
@@ -38,7 +39,7 @@ impl BuildHasher for DeterministicBuildHasher {
 }
 
 use loom_support::{
-    STACK, assert_public_consistency, assert_snapshot_legal, assert_snapshot_legal_coalesced,
+    STACK, assert_coalesced_public_consistency, assert_public_consistency, assert_snapshot_legal,
     run_fast_model,
 };
 
@@ -53,8 +54,8 @@ fn newer_dirty_survives_flush_of_older() {
         let setup = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 10);
-                m.flush_batch(1)
+                m.low_level().insert_dirty(1, 10);
+                m.low_level().flush_batch(1)
             })
             .unwrap();
         let batch = setup.join().unwrap();
@@ -63,7 +64,7 @@ fn newer_dirty_survives_flush_of_older() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 20);
+                m.low_level().insert_dirty(1, 20);
             })
             .unwrap();
 
@@ -72,7 +73,7 @@ fn newer_dirty_survives_flush_of_older() {
         let flusher = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m2.mark_flushed(&b);
+                m2.low_level().mark_flushed(&b);
             })
             .unwrap();
 
@@ -83,14 +84,15 @@ fn newer_dirty_survives_flush_of_older() {
         let checker = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                if let Some((val, state, _)) = m.read(&1, |_, v, s, r| (*v, s, r)) {
+                if let Some((val, state, _)) = m.low_level().read_full(&1, |_, v, s, r| (*v, s, r))
+                {
                     assert_eq!(val, 20);
                     assert_eq!(state, EntryState::Dirty);
                 }
             })
             .unwrap();
         checker.join().unwrap();
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -105,14 +107,14 @@ fn concurrent_read_and_write() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 42);
+                m.low_level().insert_dirty(1, 42);
             })
             .unwrap();
 
         let m2 = map.clone();
         let reader = thread::Builder::new()
             .stack_size(STACK)
-            .spawn(move || m2.read(&1, |_, v, s, _| (*v, s)))
+            .spawn(move || m2.read(&1, |_, v, s| (*v, s)))
             .unwrap();
 
         writer.join().unwrap();
@@ -125,7 +127,7 @@ fn concurrent_read_and_write() {
                 assert_eq!(state, EntryState::Dirty);
             }
         }
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -149,7 +151,7 @@ fn dirty_write_replaces_clean() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 20);
+                m.low_level().insert_dirty(1, 20);
             })
             .unwrap();
 
@@ -159,12 +161,12 @@ fn dirty_write_replaces_clean() {
         let checker = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                let result = m.read(&1, |_, v, s, _| (*v, s));
+                let result = m.read(&1, |_, v, s| (*v, s));
                 assert_eq!(result, Some((20, EntryState::Dirty)));
             })
             .unwrap();
         checker.join().unwrap();
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -179,9 +181,9 @@ fn flush_does_not_clear_newer_dirty_ptr() {
         let setup = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 10);
-                let batch = m.flush_batch(1);
-                m.insert_dirty(1, 20);
+                m.low_level().insert_dirty(1, 10);
+                let batch = m.low_level().flush_batch(1);
+                m.low_level().insert_dirty(1, 20);
                 batch
             })
             .unwrap();
@@ -192,7 +194,7 @@ fn flush_does_not_clear_newer_dirty_ptr() {
         let flusher = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.mark_flushed(&b);
+                m.low_level().mark_flushed(&b);
             })
             .unwrap();
 
@@ -202,16 +204,15 @@ fn flush_does_not_clear_newer_dirty_ptr() {
         let checker = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                let result = m.read(&1, |_, v, s, r| (*v, s, r));
+                let result = m.read(&1, |_, v, s| (*v, s));
                 assert!(result.is_some());
-                let (val, state, vis) = result.unwrap();
+                let (val, state) = result.unwrap();
                 assert_eq!(val, 20);
                 assert_eq!(state, EntryState::Dirty);
-                assert!(matches!(vis, VisibleRef::Dirty(_)));
             })
             .unwrap();
         checker.join().unwrap();
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -235,7 +236,7 @@ fn concurrent_clean_eviction() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 99);
+                m.low_level().insert_dirty(1, 99);
             })
             .unwrap();
 
@@ -254,14 +255,14 @@ fn concurrent_clean_eviction() {
         let checker = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                if let Some((val, state)) = m.read(&1, |_, v, s, _| (*v, s)) {
+                if let Some((val, state)) = m.read(&1, |_, v, s| (*v, s)) {
                     assert_eq!(val, 99);
                     assert_eq!(state, EntryState::Dirty);
                 }
             })
             .unwrap();
         checker.join().unwrap();
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -276,7 +277,7 @@ fn concurrent_writers_same_key_leave_a_valid_dirty_value() {
         let writer1 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m1.insert_dirty(1, 10);
+                m1.low_level().insert_dirty(1, 10);
             })
             .unwrap();
 
@@ -284,20 +285,20 @@ fn concurrent_writers_same_key_leave_a_valid_dirty_value() {
         let writer2 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m2.insert_dirty(1, 20);
+                m2.low_level().insert_dirty(1, 20);
             })
             .unwrap();
 
         writer1.join().unwrap();
         writer2.join().unwrap();
 
-        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        let result = map.low_level().read_full(&1, |_, v, s, r| (*v, s, r));
         assert!(result.is_some());
         let (val, state, vis) = result.unwrap();
         assert!(matches!(val, 10 | 20));
         assert_eq!(state, EntryState::Dirty);
         assert!(matches!(vis, VisibleRef::Dirty(_)));
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -312,7 +313,7 @@ fn public_api_is_consistent_after_write_race_joins() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m1.insert_dirty(7, 70);
+                m1.low_level().insert_dirty(7, 70);
             })
             .unwrap();
 
@@ -320,7 +321,9 @@ fn public_api_is_consistent_after_write_race_joins() {
         let reader = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                let _ = m2.read(&7, |_, value, state, visible| (*value, state, visible));
+                let _ = m2
+                    .low_level()
+                    .read_full(&7, |_, value, state, visible| (*value, state, visible));
             })
             .unwrap();
 
@@ -328,7 +331,7 @@ fn public_api_is_consistent_after_write_race_joins() {
         reader.join().unwrap();
 
         assert_public_consistency(&map, 7);
-        assert_snapshot_legal(&map.debug_snapshot());
+        assert_snapshot_legal(&map.low_level().debug_snapshot());
     });
 }
 
@@ -347,7 +350,7 @@ fn coalesced_concurrent_writers_same_key_leave_a_valid_dirty_value() {
         let writer1 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m1.insert_dirty(1, 11);
+                m1.low_level().insert_dirty(1, 11);
             })
             .unwrap();
 
@@ -355,20 +358,20 @@ fn coalesced_concurrent_writers_same_key_leave_a_valid_dirty_value() {
         let writer2 = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m2.insert_dirty(1, 33);
+                m2.low_level().insert_dirty(1, 33);
             })
             .unwrap();
 
         writer1.join().unwrap();
         writer2.join().unwrap();
 
-        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        let result = map.read(&1, |_, v, s| (*v, s));
         assert!(result.is_some());
-        let (val, state, vis) = result.unwrap();
+        let (val, state) = result.unwrap();
         assert!(matches!(val, 11 | 33));
         assert_eq!(state, EntryState::Dirty);
-        assert!(matches!(vis, VisibleRef::Dirty(_)));
-        assert_snapshot_legal_coalesced(&map.debug_snapshot());
+        assert_coalesced_public_consistency(&map, 1);
+        assert_eq!(map.dirty_log_len(), 1);
     });
 }
 
@@ -387,8 +390,8 @@ fn coalesced_newer_dirty_survives_flush_of_older() {
         let setup = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 10);
-                m.flush_batch(1)
+                m.low_level().insert_dirty(1, 10);
+                m.low_level().flush_batch(1)
             })
             .unwrap();
         let batch = setup.join().unwrap();
@@ -397,7 +400,7 @@ fn coalesced_newer_dirty_survives_flush_of_older() {
         let writer = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m.insert_dirty(1, 20);
+                m.low_level().insert_dirty(1, 20);
             })
             .unwrap();
 
@@ -406,19 +409,19 @@ fn coalesced_newer_dirty_survives_flush_of_older() {
         let flusher = thread::Builder::new()
             .stack_size(STACK)
             .spawn(move || {
-                m2.mark_flushed(&b);
+                m2.low_level().mark_flushed(&b);
             })
             .unwrap();
 
         writer.join().unwrap();
         flusher.join().unwrap();
 
-        let result = map.read(&1, |_, v, s, r| (*v, s, r));
+        let result = map.read(&1, |_, v, s| (*v, s));
         assert!(result.is_some());
-        let (val, state, vis) = result.unwrap();
+        let (val, state) = result.unwrap();
         assert_eq!(val, 20);
         assert_eq!(state, EntryState::Dirty);
-        assert!(matches!(vis, VisibleRef::Dirty(_)));
-        assert_snapshot_legal_coalesced(&map.debug_snapshot());
+        assert_coalesced_public_consistency(&map, 1);
+        assert_eq!(map.dirty_log_len(), 1);
     });
 }
