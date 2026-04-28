@@ -1158,7 +1158,7 @@ The plan is complete only when all of these are true:
 
 ## Batch A Completion Log
 
-**Status: ALL COMPLETE** — 2025-04-27
+**Status: PHASE 1 PARTIAL — `src/map/types.rs` extraction was attempted but not completed; `src/map.rs` remains the 2678-line monolith. `src/map/engine.rs` (527 lines) is an orphan file from a prior partial attempt. Batch B (Tasks 1.1–1.6) is not yet complete.**
 
 ### Task A1: Wire `src/dirty_mode.rs` Split — DONE
 
@@ -1219,24 +1219,18 @@ $ cargo check --bin coalesced_hotpath --features dev-tools 2>&1
 
 Gates: `cargo run --features dev-tools --bin coalesced_hotpath -- serial-quiet 1` ✓, `cargo clippy --bin coalesced_hotpath --features dev-tools -- -D warnings` ✓
 
-### Task A3: Repair Misleading `src/map/` Split — DONE
+### Task A3: Repair Misleading `src/map/` Split — PARTIALLY DONE (needs completion in Batch B)
 
-Changes:
+Changes (attempted):
 
-- Deleted `src/map.rs` (Rust would find both file and directory when declaring `mod map`).
-- Updated `src/map/mod.rs` to honestly document that `types.rs` is the current monolith pending extraction by tasks B1-B5.
-- `src/map/mod.rs` no longer falsely claims the module is split by concern.
+- `src/map/engine.rs` was created with StrictEngine/CoalescedEngine struct+impl split.
+- `src/map/types.rs` and `src/map/low_level.rs` were NOT created (the extraction was incomplete).
+- `src/map.rs` (2678-line monolith) still exists and `src/map/` is not a directory module tree.
 
-Hard verification:
-
-```bash
-$ ls src/map.rs
-ls: cannot access 'src/map.rs': No such file or directory
-$ wc -l src/map/types.rs
-3188 src/map/types.rs  # monolith pending extraction
-```
 
 Gates: `cargo check --all-targets --all-features` ✓, `cargo test --lib` ✓ (11 tests)
+
+**Reality**: The `src/map/` directory contains only `engine.rs` (527 lines). The monolith `src/map.rs` (2678 lines) is still the active module. Tasks 1.1–1.6 must complete the full extraction.
 
 ### Task A4: Update tasks.md After Batch A Fixes — DONE
 
@@ -1248,6 +1242,6 @@ This entry (Batch A Completion Log) was added to document the actual repairs.
 
 These tasks do the real extraction work that Batch A corrected.
 
-**Status: PENDING** — not yet started.
+**Status: IN PROGRESS (partial) — Task A3 attempted but did not complete the `src/map/types.rs` extraction. `src/map.rs` (2678L monolith) + `src/map/engine.rs` (527L orphan) exist. `src/map/types.rs` and `src/map/low_level.rs` do not exist yet. Gates: ALL PASSING with current monolith state.**
 
 See Phase 1 tasks 1.1–1.7 (renamed B1–B5 in this batch structure).
