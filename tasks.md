@@ -89,6 +89,132 @@ These are the findings this plan must fully drain:
 - `model-cachelog/src/tla.rs` mixes TLA value parsing, driver, emitter, and trace state.
 - Historical `aidocs` plans dominate repo weight. Do not edit them now, but produce clean current docs elsewhere.
 
+## Batch A: Repair Broken Splits (Pre-Phase-1 Corrections)
+
+These tasks fix incomplete or incorrect work from earlier cleanup attempts.
+
+### Task A1: Wire `src/dirty_mode.rs` Split
+
+Context:
+
+- Earlier work created `src/dirty_mode/native.rs` and `src/dirty_mode/loom.rs` but the parent `src/dirty_mode.rs` still contained the original monolithic implementation.
+- The facade (`src/dirty_mode.rs`) was never updated to use the split files.
+
+Files:
+
+- `src/dirty_mode.rs`
+- `src/dirty_mode/shared.rs`
+- `src/dirty_mode/native.rs`
+- `src/dirty_mode/loom.rs`
+
+Requirements:
+
+- `src/dirty_mode.rs` must be a thin facade that declares the three submodules with correct `#[cfg]` gates.
+- `pub(crate) mod shared` unconditionally.
+- `pub(crate) mod native` behind `#[cfg(not(feature = "loom"))]`.
+- `pub(crate) mod loom` behind `#[cfg(feature = "loom")]`.
+- Re-export `DirtyMode`, `OrderedFifoDirty`, `FlushWork` with matching `#[cfg]` gates.
+- No `mod imp` blocks in `src/dirty_mode.rs`.
+- `FlushWork` enum lives in `shared.rs`.
+
+Hard verification:
+
+```bash
+rg "mod imp" src/dirty_mode.rs  # must be empty
+rg "^[[:space:]]*pub(crate) trait DirtyMode|^[[:space:]]*pub(crate) struct OrderedFifoDirty" src/dirty_mode.rs  # must be empty
+rg "mod shared|mod native|mod loom|pub\(crate\) use .*DirtyMode|pub\(crate\) use .*FlushWork" src/dirty_mode.rs  # must show wiring
+```
+
+Definition of done:
+
+- Hard verification commands pass.
+- `cargo check --all-targets --all-features` passes.
+- `cargo test -q --features loom` passes.
+
+### Task A2: Remove Stale Functions From `src/bin/coalesced_hotpath.rs`
+
+Context:
+
+- Earlier work added `#![allow(dead_code)]` to suppress warnings from orphaned `run_*` function bodies.
+- The dead functions remain in the file and must be removed properly.
+- The mode table was never updated — stale mode names still reference deleted functions.
+
+Files:
+
+- `src/bin/coalesced_hotpath.rs`
+
+Requirements:
+
+- Remove `#![allow(dead_code)]` — the file should compile with zero warnings.
+- Update the `hotpath_mode_table!` macro to only contain the 13 active modes: `serial`, `serial-quiet`, `batch-unique`, `batch-unique-quiet`, `batch-repeated`, `batch-repeated-quiet`, `flush-batch-unique`, `mark-flushed-unique`, `flush-batch-build-multi`, `mark-flushed-multi`, `clone-keys-multi`, `materialize-dirty-arcs-multi`, `materialize-dirty-arcs-keyclone-multi`.
+- Remove ALL orphaned `run_*` function bodies not referenced by the active modes.
+- Remove dead helper functions (`build_compacted_repeated_bytes_batches`, `build_compacted_repeated_arc_bytes_batches`, `build_compacted_repeated_bytes_multi`, `build_compacted_repeated_arc_bytes_multi`, `build_compacted_unique_bytes_batches`, `build_compacted_unique_arc_bytes_batches`, `PreparedCompactedBatch`).
+- The file must compile with `cargo check --bin coalesced_hotpath --features dev-tools` showing zero warnings.
+
+Hard verification:
+
+```bash
+rg "allow\(dead_code\)" src/bin/coalesced_hotpath.rs  # must be empty
+cargo check --bin coalesced_hotpath --features dev-tools 2>&1  # must show zero warnings
+```
+
+Definition of done:
+
+- Hard verification commands pass.
+- `cargo run --features dev-tools --bin coalesced_hotpath -- serial-quiet 1` passes.
+- `cargo clippy --bin coalesced_hotpath --features dev-tools -- -D warnings` passes.
+
+### Task A3: Repair Misleading `src/map/` Split
+
+Context:
+
+- Earlier work created `src/map/types.rs` and `src/map/mod.rs`, but `types.rs` is a copy of the original monolithic `src/map.rs` — not an extraction by concern.
+- The `mod.rs` documentation falsely claims the split isolates concerns when it does not.
+- The `src/map.rs` file was restored during merge conflicts but must be deleted (Rust uses `src/map/` directory when both `src/map.rs` and `src/map/mod.rs` exist).
+
+Files:
+
+- `src/map.rs` (to be deleted — Rust conflict)
+- `src/map/types.rs`
+- `src/map/mod.rs`
+
+Requirements:
+
+- Delete `src/map.rs` so Rust uses the `src/map/` directory.
+- Update `src/map/mod.rs` to honestly document that `types.rs` is the current monolith pending extraction (tasks B1-B5 will do the real split).
+- `src/map/mod.rs` documentation must NOT claim the module is split by concern until tasks B1-B5 complete.
+
+Hard verification:
+
+```bash
+# src/map.rs must not exist
+ls src/map.rs  # must fail
+# types.rs must still contain the full monolith
+wc -l src/map/types.rs  # will be ~3188 lines until B1-B5
+```
+
+Definition of done:
+
+- Hard verification commands pass.
+- `cargo check --all-targets --all-features` passes.
+- `cargo test --lib` passes.
+
+### Task A4: Update This File After Batch A Fixes
+
+Context:
+
+- After completing tasks A1-A3, update this file to mark Batch A complete and note the actual state of each repair.
+
+Files:
+
+- `tasks.md`
+
+Steps:
+
+1. Update the completion log below with the actual changes made.
+2. Ensure the hard verification results are recorded.
+3. Verify no stale references to old file names or module structure remain in this file.
+
 ## Phase 0: Baseline And Guardrails
 
 ### Task 0.1: Capture Baseline Build And Public Surface
@@ -1027,3 +1153,101 @@ The plan is complete only when all of these are true:
 - Dev-tools smoke passes.
 - Bench check passes.
 - Final response includes the original finding matrix with no silent pending item.
+
+---
+
+## Batch A Completion Log
+
+**Status: ALL COMPLETE** — 2025-04-27
+
+### Task A1: Wire `src/dirty_mode.rs` Split — DONE
+
+Changes:
+
+- Created `src/dirty_mode/shared.rs` with `FlushWork` enum (moved from `dirty_mode.rs`).
+- Created `src/dirty_mode/native.rs` with native `OrderedFifoDirty` implementation.
+- Created `src/dirty_mode/loom.rs` with loom `OrderedFifoDirty` implementation.
+- Replaced `src/dirty_mode.rs` with a thin 17-line facade:
+  - `pub(crate) mod shared` (unconditional).
+  - `pub(crate) mod loom` behind `#[cfg(feature = "loom")]`.
+  - `pub(crate) mod native` behind `#[cfg(not(feature = "loom"))]`.
+  - Conditional re-exports of `DirtyMode`, `OrderedFifoDirty` from the appropriate submodule.
+  - `pub(crate) use shared::FlushWork`.
+
+Hard verification:
+
+```bash
+$ rg "mod imp" src/dirty_mode.rs
+# (empty — no mod imp in facade; mod imp only exists inside submodules)
+# exit 1
+$ rg "^[[:space:]]*pub(crate) trait DirtyMode|^[[:space:]]*pub(crate) struct OrderedFifoDirty" src/dirty_mode.rs
+# (empty — types are in submodules, not the facade)
+# exit 1
+$ rg "mod shared|mod native|mod loom|pub\(crate\) use .*DirtyMode|pub\(crate\) use .*FlushWork" src/dirty_mode.rs
+pub(crate) mod shared;
+#[cfg(feature = "loom")]
+pub(crate) mod loom;
+#[cfg(not(feature = "loom"))]
+pub(crate) mod native;
+#[cfg(feature = "loom")]
+pub(crate) use loom::{DirtyMode, OrderedFifoDirty};
+#[cfg(not(feature = "loom"))]
+pub(crate) use native::{DirtyMode, OrderedFifoDirty};
+pub(crate) use shared::FlushWork;
+```
+
+Gates: `cargo check --all-targets --all-features` ✓, `cargo test -q --features loom` ✓ (79 total tests)
+
+### Task A2: Remove Stale Functions From `src/bin/coalesced_hotpath.rs` — DONE
+
+Changes:
+
+- Removed `#![allow(dead_code)]` directive.
+- Patched `hotpath_mode_table!` macro to only 13 active modes: `serial`, `serial-quiet`, `batch-unique`, `batch-unique-quiet`, `batch-repeated`, `batch-repeated-quiet`, `flush-batch-unique`, `mark-flushed-unique`, `flush-batch-build-multi`, `mark-flushed-multi`, `clone-keys-multi`, `materialize-dirty-arcs-multi`, `materialize-dirty-arcs-keyclone-multi`.
+- Removed 34 orphaned `run_*` function bodies (all modes not in the active set).
+- Removed dead helper functions: `build_compacted_repeated_bytes_batches`, `build_compacted_repeated_arc_bytes_batches`, `build_compacted_repeated_bytes_multi`, `build_compacted_repeated_arc_bytes_multi`, `build_compacted_unique_bytes_batches`, `build_compacted_unique_arc_bytes_batches`, `PreparedCompactedBatch` type alias.
+- File reduced from 1776 lines to ~460 lines.
+
+Hard verification:
+
+```bash
+$ rg "allow\(dead_code\)" src/bin/coalesced_hotpath.rs
+# (empty — no output, exit 1)
+$ cargo check --bin coalesced_hotpath --features dev-tools 2>&1
+# Finished dev profile... zero warnings
+```
+
+Gates: `cargo run --features dev-tools --bin coalesced_hotpath -- serial-quiet 1` ✓, `cargo clippy --bin coalesced_hotpath --features dev-tools -- -D warnings` ✓
+
+### Task A3: Repair Misleading `src/map/` Split — DONE
+
+Changes:
+
+- Deleted `src/map.rs` (Rust would find both file and directory when declaring `mod map`).
+- Updated `src/map/mod.rs` to honestly document that `types.rs` is the current monolith pending extraction by tasks B1-B5.
+- `src/map/mod.rs` no longer falsely claims the module is split by concern.
+
+Hard verification:
+
+```bash
+$ ls src/map.rs
+ls: cannot access 'src/map.rs': No such file or directory
+$ wc -l src/map/types.rs
+3188 src/map/types.rs  # monolith pending extraction
+```
+
+Gates: `cargo check --all-targets --all-features` ✓, `cargo test --lib` ✓ (11 tests)
+
+### Task A4: Update tasks.md After Batch A Fixes — DONE
+
+This entry (Batch A Completion Log) was added to document the actual repairs.
+
+---
+
+## Batch B: Extract Map Sub-Modules (Tasks B1–B5)
+
+These tasks do the real extraction work that Batch A corrected.
+
+**Status: PENDING** — not yet started.
+
+See Phase 1 tasks 1.1–1.7 (renamed B1–B5 in this batch structure).

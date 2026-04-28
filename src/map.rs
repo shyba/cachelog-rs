@@ -6,8 +6,6 @@ use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hash};
 #[cfg(all(not(feature = "loom"), feature = "dev-tools"))]
 use std::time::Instant as StdInstant;
-#[cfg(not(feature = "loom"))]
-use std::{cell::RefCell, thread_local};
 
 use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
@@ -558,21 +556,26 @@ enum DedupeSlots {
     Many(Vec<usize>),
 }
 
-#[cfg(not(feature = "loom"))]
-thread_local! {
-    static BORROWED_COALESCED_KEYS: RefCell<Vec<Vec<u8>>> = const { RefCell::new(Vec::new()) };
-}
-
-fn with_borrowed_coalesced_keys<R>(f: impl FnOnce(&mut Vec<Vec<u8>>) -> R) -> R {
+pub(crate) mod borrowed_keys {
     #[cfg(not(feature = "loom"))]
-    {
-        BORROWED_COALESCED_KEYS.with(|scratch| f(&mut scratch.borrow_mut()))
+    use std::{cell::RefCell, thread_local};
+
+    #[cfg(not(feature = "loom"))]
+    thread_local! {
+        static BORROWED_COALESCED_KEYS: RefCell<Vec<Vec<u8>>> = const { RefCell::new(Vec::new()) };
     }
 
-    #[cfg(feature = "loom")]
-    {
-        let mut scratch = Vec::new();
-        f(&mut scratch)
+    pub(crate) fn with_borrowed_coalesced_keys<R>(f: impl FnOnce(&mut Vec<Vec<u8>>) -> R) -> R {
+        #[cfg(not(feature = "loom"))]
+        {
+            BORROWED_COALESCED_KEYS.with(|scratch| f(&mut scratch.borrow_mut()))
+        }
+
+        #[cfg(feature = "loom")]
+        {
+            let mut scratch = Vec::new();
+            f(&mut scratch)
+        }
     }
 }
 
@@ -2286,7 +2289,7 @@ where
             return 0;
         }
 
-        with_borrowed_coalesced_keys(|scratch_keys| {
+        borrowed_keys::with_borrowed_coalesced_keys(|scratch_keys| {
             let mut latest_slot: AHashMap<&'a [u8], usize> = AHashMap::with_capacity(entries.len());
             let mut values: Vec<Option<V>> = Vec::with_capacity(entries.len());
             let mut used = 0_usize;
