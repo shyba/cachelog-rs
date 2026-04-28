@@ -11,9 +11,7 @@ use scc::HashMap as ConcurrentHashMap;
 use scc::hash_map::Entry as MapEntry;
 
 #[cfg(not(feature = "loom"))]
-use crate::background_flush::{
-    BackgroundFlushConfig, BackgroundFlushHandle, BackgroundFlushService,
-};
+use crate::background_flush::{BackgroundFlushConfig, BackgroundFlushHandle};
 #[cfg(any(test, feature = "dev-tools"))]
 use crate::bytes_pooling::bytes_from_borrowed;
 use crate::dirty_mode::{DirtyMode, OrderedFifoDirty};

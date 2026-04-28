@@ -59,11 +59,7 @@ const HOTPATH_EXAMPLES: &[&str] = &[
     "serial 1000000",
     "batch-unique 10000",
     "coalesced-batch-repeated-quiet 10000",
-    "compact-repeated-prebuilt-quiet 10000",
-    "consume-repeated-compacted-prebuilt-quiet 10000",
-    "clone-keys-repeated-compacted-prebuilt-quiet 10000",
-    "clone-and-box-repeated-compacted-borrowed-quiet 10000",
-    "clone-and-box-repeated-compacted-borrowed-leak-quiet 10000",
+    "clone-keys-multi-quiet 10000",
     "scc-upsert-overwrite-prepared-quiet 10000",
     "scc-upsert-overwrite-u64-u64-prepared-quiet 10000",
     "scc-upsert-overwrite-u64-box-prepared-quiet 10000",
@@ -181,9 +177,11 @@ fn run_batch_unique(
         }
         let written = map.low_level().insert_dirty_batch_without_ids(batch);
         std::hint::black_box(written);
-        if let Some(every) = flush_every
-            && (batch_idx + 1) % every == 0
-        {
+        let should_flush = match flush_every {
+            Some(every) => (batch_idx + 1) % every == 0,
+            None => false,
+        };
+        if should_flush {
             let flushed = map
                 .flush_now(1_000_000, |_| Ok::<(), ()>(()))
                 .expect("no-op flush should succeed");
