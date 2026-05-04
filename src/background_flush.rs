@@ -227,26 +227,11 @@ impl BackgroundFlushHandle {
         scan()
     }
 
-    pub fn update_policy(&self, trigger_dirty: usize, flush_limit: usize) -> usize {
+    pub fn reconfigure(&self, trigger_dirty: usize, flush_limit: usize) -> Result<(), String> {
         let new_trigger = trigger_dirty.max(1);
         let old_trigger = self.trigger_dirty.swap(new_trigger, Ordering::AcqRel);
         self.flush_limit
             .store(flush_limit.max(1), Ordering::Release);
-        old_trigger
-    }
-
-    pub fn set_flush_limit(&self, flush_limit: usize) {
-        self.flush_limit
-            .store(flush_limit.max(1), Ordering::Release);
-    }
-
-    pub fn set_trigger_dirty(&self, trigger_dirty: usize) {
-        self.trigger_dirty
-            .store(trigger_dirty.max(1), Ordering::Release);
-    }
-
-    pub fn reconfigure(&self, trigger_dirty: usize, flush_limit: usize) -> Result<(), String> {
-        let old_trigger = self.update_policy(trigger_dirty, flush_limit);
         if !self.running.load(Ordering::Acquire) {
             return Err(Self::shutdown_error());
         }
@@ -255,7 +240,6 @@ impl BackgroundFlushHandle {
             .backlog_hint
             .load(Ordering::Acquire)
             .max((self.dirty_len)());
-        let new_trigger = self.trigger_dirty.load(Ordering::Acquire).max(1);
         if new_trigger < old_trigger && current_dirty >= new_trigger {
             self.request_flush()?;
         }

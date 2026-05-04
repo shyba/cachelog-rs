@@ -100,6 +100,34 @@ where
 }
 
 pub fn assert_snapshot_legal(snapshot: &DebugSnapshot<usize, usize>) {
+    let (visible_dirty_ids, visible_clean_count) = collect_visible(snapshot);
+    assert_eq!(
+        visible_clean_count, snapshot.clean_count,
+        "clean_count must match visible clean entries"
+    );
+
+    assert_strictly_increasing(
+        &snapshot
+            .dirty_pending
+            .iter()
+            .map(|record| record.id)
+            .collect::<Vec<_>>(),
+        "dirty_pending",
+    );
+    assert_strictly_increasing(
+        &snapshot
+            .dirty_inflight
+            .iter()
+            .map(|record| record.id)
+            .collect::<Vec<_>>(),
+        "dirty_inflight",
+    );
+
+    let (pending_ids, inflight_ids) = collect_queued(snapshot);
+    assert_visible_refs(snapshot, &visible_dirty_ids, &pending_ids, &inflight_ids);
+}
+
+fn collect_visible(snapshot: &DebugSnapshot<usize, usize>) -> (BTreeSet<u64>, usize) {
     let mut visible_dirty_ids = BTreeSet::new();
     let mut visible_clean_count = 0usize;
 
@@ -140,28 +168,10 @@ pub fn assert_snapshot_legal(snapshot: &DebugSnapshot<usize, usize>) {
         }
     }
 
-    assert_eq!(
-        visible_clean_count, snapshot.clean_count,
-        "clean_count must match visible clean entries"
-    );
+    (visible_dirty_ids, visible_clean_count)
+}
 
-    assert_strictly_increasing(
-        &snapshot
-            .dirty_pending
-            .iter()
-            .map(|record| record.id)
-            .collect::<Vec<_>>(),
-        "dirty_pending",
-    );
-    assert_strictly_increasing(
-        &snapshot
-            .dirty_inflight
-            .iter()
-            .map(|record| record.id)
-            .collect::<Vec<_>>(),
-        "dirty_inflight",
-    );
-
+fn collect_queued(snapshot: &DebugSnapshot<usize, usize>) -> (BTreeSet<u64>, BTreeSet<u64>) {
     for record in snapshot
         .dirty_pending
         .iter()
@@ -200,8 +210,22 @@ pub fn assert_snapshot_legal(snapshot: &DebugSnapshot<usize, usize>) {
         );
     }
 
+    (pending_ids, inflight_ids)
+}
+
+fn assert_visible_refs(
+    snapshot: &DebugSnapshot<usize, usize>,
+    visible_dirty_ids: &BTreeSet<u64>,
+    pending_ids: &BTreeSet<u64>,
+    inflight_ids: &BTreeSet<u64>,
+) {
     for (_, visible) in &snapshot.visible {
         if let DebugVisible::Dirty(record) = visible {
+            assert!(
+                visible_dirty_ids.contains(&record.id),
+                "visible dirty id {} missing from visible id set",
+                record.id
+            );
             assert!(
                 pending_ids.contains(&record.id) || inflight_ids.contains(&record.id),
                 "visible dirty id {} must still be pending or inflight",

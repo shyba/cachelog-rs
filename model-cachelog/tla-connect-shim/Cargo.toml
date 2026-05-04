@@ -1,0 +1,120 @@
+# Local compatibility copy of tla-connect 0.0.4.
+# The crates.io manifest declares rust-version 1.93; this copy is used only so
+# model-cachelog's TLA feature remains buildable on this repo's rustc 1.91.
+
+[package]
+edition = "2021"
+rust-version = "1.91"
+name = "tla-connect"
+version = "0.0.4"
+authors = ["nxbrain"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+description = "TLA+/Apalache integration for model-based testing"
+homepage = "https://github.com/wiggum-cc/tla-connect"
+documentation = "https://docs.rs/tla-connect"
+readme = "README.md"
+keywords = [
+    "tla",
+    "apalache",
+    "model-checking",
+    "testing",
+    "verification",
+]
+categories = [
+    "development-tools::testing",
+    "science",
+]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/wiggum-cc/tla-connect"
+
+[features]
+default = [
+    "replay",
+    "trace-gen",
+    "trace-validation",
+]
+full = [
+    "replay",
+    "trace-gen",
+    "trace-validation",
+    "rpc",
+    "parallel",
+]
+parallel = ["dep:rayon"]
+replay = []
+rpc = [
+    "dep:reqwest",
+    "dep:tokio",
+    "dep:rand",
+    "dep:base64",
+]
+trace-gen = ["dep:tempfile"]
+trace-validation = ["dep:tempfile"]
+
+[lib]
+name = "tla_connect"
+path = "src/lib.rs"
+
+[dependencies.base64]
+version = "0.22"
+optional = true
+
+[dependencies.itf]
+version = "0.4"
+
+[dependencies.rand]
+version = "0.9"
+optional = true
+
+[dependencies.rayon]
+version = "1.10"
+optional = true
+
+[dependencies.reqwest]
+version = "0.13"
+features = ["json"]
+optional = true
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1"
+
+[dependencies.similar]
+version = "2"
+
+[dependencies.tempfile]
+version = "3"
+optional = true
+
+[dependencies.thiserror]
+version = "2"
+
+[dependencies.tokio]
+version = "1"
+features = [
+    "process",
+    "fs",
+    "rt",
+]
+optional = true
+
+[dependencies.tracing]
+version = "0.1"
+
+[dev-dependencies.tokio]
+version = "1"
+features = [
+    "rt-multi-thread",
+    "macros",
+]
+
+[dev-dependencies.wiremock]
+version = "0.6"

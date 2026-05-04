@@ -2,17 +2,9 @@
 
 use std::collections::VecDeque;
 
-#[cfg(any(test, feature = "dev-tools"))]
-use bytes::Bytes;
-
-#[cfg(any(test, feature = "dev-tools"))]
-use crate::bytes_pooling::bytes_from_borrowed;
 use crate::dirty_mode::FlushWork;
 use crate::entry::{DirtyRecord, FlushBatch, WriteId};
 use crate::sync::{Arc, Mutex, lock, new_mutex};
-
-#[cfg(any(test, feature = "dev-tools"))]
-type BorrowedArcVecDirtyRecord = Arc<DirtyRecord<Vec<u8>, Arc<Vec<u8>>>>;
 
 pub(crate) trait DirtyMode<K, V> {
     type VisibleDirty: Clone;
@@ -199,85 +191,5 @@ impl<K, V> OrderedFifoDirty<K, V> {
             .inflight
             .as_ref()
             .map_or(0, FlushBatch::len)
-    }
-}
-
-impl OrderedFifoDirty<Vec<u8>, Vec<u8>> {
-    pub(crate) fn append_batch_borrowed<'a, I>(
-        &self,
-        entries: I,
-    ) -> Vec<Arc<DirtyRecord<Vec<u8>, Vec<u8>>>>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let iter = entries.into_iter();
-        let (lower, upper) = iter.size_hint();
-        let mut inner = lock(&self.inner);
-        let mut out = Vec::with_capacity(upper.unwrap_or(lower));
-        for (key, value) in iter {
-            let id = inner.next_id;
-            inner.next_id = inner.next_id.wrapping_add(1);
-            let record = Arc::new(DirtyRecord {
-                id,
-                key: key.to_vec(),
-                value: value.to_vec(),
-            });
-            inner.entries.push_back(record.clone());
-            out.push(record);
-        }
-        out
-    }
-}
-
-#[cfg(any(test, feature = "dev-tools"))]
-impl OrderedFifoDirty<Vec<u8>, Arc<Vec<u8>>> {
-    pub(crate) fn append_batch_borrowed<'a, I>(&self, entries: I) -> Vec<BorrowedArcVecDirtyRecord>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let iter = entries.into_iter();
-        let (lower, upper) = iter.size_hint();
-        let mut inner = lock(&self.inner);
-        let mut out = Vec::with_capacity(upper.unwrap_or(lower));
-        for (key, value) in iter {
-            let id = inner.next_id;
-            inner.next_id = inner.next_id.wrapping_add(1);
-            let record = Arc::new(DirtyRecord {
-                id,
-                key: key.to_vec(),
-                value: Arc::new(value.to_vec()),
-            });
-            inner.entries.push_back(record.clone());
-            out.push(record);
-        }
-        out
-    }
-}
-
-#[cfg(any(test, feature = "dev-tools"))]
-impl OrderedFifoDirty<Vec<u8>, Bytes> {
-    pub(crate) fn append_batch_borrowed<'a, I>(
-        &self,
-        entries: I,
-    ) -> Vec<Arc<DirtyRecord<Vec<u8>, Bytes>>>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let iter = entries.into_iter();
-        let (lower, upper) = iter.size_hint();
-        let mut inner = lock(&self.inner);
-        let mut out = Vec::with_capacity(upper.unwrap_or(lower));
-        for (key, value) in iter {
-            let id = inner.next_id;
-            inner.next_id = inner.next_id.wrapping_add(1);
-            let record = Arc::new(DirtyRecord {
-                id,
-                key: key.to_vec(),
-                value: bytes_from_borrowed(value),
-            });
-            inner.entries.push_back(record.clone());
-            out.push(record);
-        }
-        out
     }
 }

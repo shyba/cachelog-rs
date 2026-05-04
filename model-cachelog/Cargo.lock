@@ -741,8 +741,6 @@ dependencies = [
 [[package]]
 name = "tla-connect"
 version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e5ba1412d2e45fa3353aadd92e5bacf7975cc690c87b358a9ce1aa941af681"
 dependencies = [
  "itf",
  "serde",

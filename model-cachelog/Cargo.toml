@@ -21,7 +21,7 @@ cachelog-core = { path = "../cachelog-core", default-features = false, features 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-tla-connect = { version = "0.0.4", optional = true }
+tla-connect = { path = "tla-connect-shim", optional = true }
 itf = { version = "0.4.0", optional = true }
 
 [dev-dependencies]

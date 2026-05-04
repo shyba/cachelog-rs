@@ -2,22 +2,13 @@
 
 use std::collections::VecDeque;
 
-#[cfg(any(test, feature = "dev-tools"))]
-use bytes::Bytes;
 use crossbeam_channel as cbch;
 
-#[cfg(any(test, feature = "dev-tools"))]
-use crate::bytes_pooling::bytes_from_borrowed;
 use crate::dirty_mode::FlushWork;
 #[cfg(any(test, feature = "loom"))]
 use crate::entry::WriteId;
 use crate::entry::{DirtyRecord, FlushBatch};
 use crate::sync::{Arc, AtomicU64, AtomicUsize, CachePadded, Mutex, Ordering, lock, new_mutex};
-
-#[cfg(any(test, feature = "dev-tools"))]
-type BorrowedArcVecDirtyRecord = Arc<DirtyRecord<Vec<u8>, Arc<Vec<u8>>>>;
-#[cfg(any(test, feature = "dev-tools"))]
-type BorrowedArcSliceDirtyRecord = Arc<DirtyRecord<Vec<u8>, Arc<[u8]>>>;
 
 pub(crate) trait DirtyMode<K, V> {
     type VisibleDirty: Clone;
@@ -44,12 +35,19 @@ pub(crate) trait DirtyMode<K, V> {
     fn next_write(&self) -> WriteId;
 }
 
+/// A single dirty entry or a batch thereof sent through the dirty queue.
 enum PendingItem<K, V> {
     One(Arc<DirtyRecord<K, V>>),
     BatchSlice(Box<[Arc<DirtyRecord<K, V>>]>),
+    /// Signals the flusher to flush immediately, bypassing the batch limit.
     ForceFlush,
 }
 
+/// The bounded sender/receiver pair for the dirty queue.
+///
+/// Created with a `capacity` which becomes the bound of the underlying
+/// crossbeam-channel. When the channel is full, [`OrderedFifoDirty::enqueue_record`]
+/// falls through to `overflow` instead of blocking.
 struct DirtyQueue<K, V> {
     tx: cbch::Sender<PendingItem<K, V>>,
     rx: Mutex<cbch::Receiver<PendingItem<K, V>>>,
@@ -90,6 +88,9 @@ pub(crate) struct OrderedFifoDirty<K, V> {
     queue: DirtyQueue<K, V>,
     append_lock: Mutex<()>,
     staged: Mutex<VecDeque<Arc<DirtyRecord<K, V>>>>,
+    /// Unbounded overflow for when the channel is full. Writes fall through here
+    /// via [`enqueue_record`](Self::enqueue_record) rather than blocking, and
+    /// are drained FIFO when the channel next empties.
     overflow: Mutex<VecDeque<Arc<DirtyRecord<K, V>>>>,
     inflight: Mutex<Option<FlushBatch<K, V>>>,
     #[cfg(test)]
@@ -349,153 +350,5 @@ impl<K, V> DirtyMode<K, V> for OrderedFifoDirty<K, V> {
     #[cfg(any(test, feature = "loom"))]
     fn next_write(&self) -> WriteId {
         self.next_id.0.load(Ordering::Relaxed)
-    }
-}
-
-impl OrderedFifoDirty<Vec<u8>, Vec<u8>> {
-    pub(crate) fn append_batch_borrowed<'a, I>(
-        &self,
-        entries: I,
-    ) -> Vec<Arc<DirtyRecord<Vec<u8>, Vec<u8>>>>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let entries: Vec<_> = entries.into_iter().collect();
-        let len = entries.len();
-        if len == 0 {
-            return Vec::new();
-        }
-        let _guard = lock(&self.append_lock);
-        let base = self.next_id.0.fetch_add(len as u64, Ordering::Relaxed);
-        let mut out = Vec::with_capacity(len);
-        for (offset, (key, value)) in entries.into_iter().enumerate() {
-            let record = Arc::new(DirtyRecord {
-                id: base.wrapping_add(offset as u64),
-                key: key.to_vec(),
-                value: value.to_vec(),
-            });
-            out.push(record);
-        }
-        self.enqueue_batch(out.clone());
-        self.pending_len.0.fetch_add(len, Ordering::Relaxed);
-        #[cfg(test)]
-        {
-            let mut shadow = lock(&self.pending_shadow);
-            for record in &out {
-                shadow.push_back(record.clone());
-            }
-        }
-        out
-    }
-}
-
-#[cfg(any(test, feature = "dev-tools"))]
-impl OrderedFifoDirty<Vec<u8>, Arc<Vec<u8>>> {
-    pub(crate) fn append_batch_borrowed<'a, I>(&self, entries: I) -> Vec<BorrowedArcVecDirtyRecord>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let entries: Vec<_> = entries.into_iter().collect();
-        let len = entries.len();
-        if len == 0 {
-            return Vec::new();
-        }
-        let _guard = lock(&self.append_lock);
-        let base = self.next_id.0.fetch_add(len as u64, Ordering::Relaxed);
-        let mut out = Vec::with_capacity(len);
-        for (offset, (key, value)) in entries.into_iter().enumerate() {
-            let record = Arc::new(DirtyRecord {
-                id: base.wrapping_add(offset as u64),
-                key: key.to_vec(),
-                value: Arc::new(value.to_vec()),
-            });
-            out.push(record);
-        }
-        self.enqueue_batch(out.clone());
-        self.pending_len.0.fetch_add(len, Ordering::Relaxed);
-        #[cfg(test)]
-        {
-            let mut shadow = lock(&self.pending_shadow);
-            for record in &out {
-                shadow.push_back(record.clone());
-            }
-        }
-        out
-    }
-}
-
-#[cfg(any(test, feature = "dev-tools"))]
-impl OrderedFifoDirty<Vec<u8>, Arc<[u8]>> {
-    pub(crate) fn append_batch_borrowed<'a, I>(
-        &self,
-        entries: I,
-    ) -> Vec<BorrowedArcSliceDirtyRecord>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let entries: Vec<_> = entries.into_iter().collect();
-        let len = entries.len();
-        if len == 0 {
-            return Vec::new();
-        }
-        let _guard = lock(&self.append_lock);
-        let base = self.next_id.0.fetch_add(len as u64, Ordering::Relaxed);
-        let mut out = Vec::with_capacity(len);
-        for (offset, (key, value)) in entries.into_iter().enumerate() {
-            let record = Arc::new(DirtyRecord {
-                id: base.wrapping_add(offset as u64),
-                key: key.to_vec(),
-                value: Arc::from(value.to_vec().into_boxed_slice()),
-            });
-            out.push(record);
-        }
-        self.enqueue_batch(out.clone());
-        self.pending_len.0.fetch_add(len, Ordering::Relaxed);
-        #[cfg(test)]
-        {
-            let mut shadow = lock(&self.pending_shadow);
-            for record in &out {
-                shadow.push_back(record.clone());
-            }
-        }
-        out
-    }
-}
-
-#[cfg(any(test, feature = "dev-tools"))]
-impl OrderedFifoDirty<Vec<u8>, Bytes> {
-    pub(crate) fn append_batch_borrowed<'a, I>(
-        &self,
-        entries: I,
-    ) -> Vec<Arc<DirtyRecord<Vec<u8>, Bytes>>>
-    where
-        I: IntoIterator<Item = (&'a [u8], &'a [u8])>,
-    {
-        let entries: Vec<_> = entries.into_iter().collect();
-        let len = entries.len();
-        if len == 0 {
-            return Vec::new();
-        }
-        let _guard = lock(&self.append_lock);
-        let base = self.next_id.0.fetch_add(len as u64, Ordering::Relaxed);
-        let mut out = Vec::with_capacity(len);
-        for (offset, (key, value)) in entries.into_iter().enumerate() {
-            let record = Arc::new(DirtyRecord {
-                id: base.wrapping_add(offset as u64),
-                key: key.to_vec(),
-                value: bytes_from_borrowed(value),
-            });
-            out.push(record);
-        }
-        self.enqueue_batch(out.clone());
-        self.pending_len.0.fetch_add(len, Ordering::Relaxed);
-        #[cfg(test)]
-        {
-            let mut shadow = lock(&self.pending_shadow);
-            for record in &out {
-                shadow.push_back(record.clone());
-            }
-        }
-        out
     }
 }

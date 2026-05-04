@@ -16,23 +16,23 @@ macro_rules! hotpath_mode_table {
             "serial-quiet" => run_serial($iters, true, $cap_override),
             "batch-unique" => run_batch_unique($iters, false, $cap_override, $flush_every),
             "batch-unique-quiet" => run_batch_unique($iters, true, $cap_override, $flush_every),
-            "strict-batch-repeated-quiet" => {
-                run_batch_repeated($iters, true, $cap_override, DirtyWriteMode::StrictLog)
+            "batch-repeated" => {
+                run_batch_repeated($iters, false, $cap_override, DirtyWriteMode::CoalescedMap)
             },
-            "coalesced-batch-repeated-quiet" => {
+            "batch-repeated-quiet" => {
                 run_batch_repeated($iters, true, $cap_override, DirtyWriteMode::CoalescedMap)
             },
-            "flush-batch-unique-quiet" => run_flush_batch_unique($iters, $cap_override),
-            "flush-batch-build-multi-quiet" => run_flush_batch_build_multi($iters, $cap_override),
-            "mark-flushed-unique-quiet" => run_mark_flushed_unique($iters, $cap_override),
-            "mark-flushed-multi-quiet" => run_mark_flushed_multi($iters, $cap_override),
-            "materialize-dirty-arcs-multi-quiet" => {
-                run_materialize_dirty_arcs_multi($iters, $cap_override)
+            "flush-batch-unique" => run_flush_batch_unique($iters, false, $cap_override),
+            "mark-flushed-unique" => run_mark_flushed_unique($iters, false, $cap_override),
+            "flush-batch-build-multi" => run_flush_batch_build_multi($iters, false, $cap_override),
+            "mark-flushed-multi" => run_mark_flushed_multi($iters, false, $cap_override),
+            "clone-keys-multi" => run_clone_keys_multi($iters, false, $cap_override),
+            "materialize-dirty-arcs-multi" => {
+                run_materialize_dirty_arcs_multi($iters, false, $cap_override)
             },
-            "materialize-dirty-arcs-keyclone-multi-quiet" => {
-                run_materialize_dirty_arcs_keyclone_multi($iters, $cap_override)
+            "materialize-dirty-arcs-keyclone-multi" => {
+                run_materialize_dirty_arcs_keyclone_multi($iters, false, $cap_override)
             },
-            "clone-keys-multi-quiet" => run_clone_keys_multi($iters, $cap_override),
         }
     };
 }
@@ -57,17 +57,17 @@ const HOTPATH_MODE_NAMES: &[&str] =
 
 const HOTPATH_EXAMPLES: &[&str] = &[
     "serial 1000000",
+    "serial-quiet 1000000",
     "batch-unique 10000",
-    "coalesced-batch-repeated-quiet 10000",
-    "clone-keys-multi-quiet 10000",
-    "scc-upsert-overwrite-prepared-quiet 10000",
-    "scc-upsert-overwrite-u64-u64-prepared-quiet 10000",
-    "scc-upsert-overwrite-u64-box-prepared-quiet 10000",
-    "scc-upsert-overwrite-array8-u64-prepared-quiet 10000",
-    "scc-upsert-overwrite-boxed-array8-u64-prepared-quiet 10000",
-    "scc-upsert-overwrite-arc-slice-u64-prepared-quiet 10000",
-    "batch-unique 10000 2001",
-    "batch-unique 10000 2001 2",
+    "batch-unique-quiet 10000",
+    "batch-repeated 10000",
+    "flush-batch-unique 10000",
+    "mark-flushed-unique 10000",
+    "flush-batch-build-multi 10000",
+    "mark-flushed-multi 10000",
+    "clone-keys-multi 10000",
+    "materialize-dirty-arcs-multi 10000",
+    "materialize-dirty-arcs-keyclone-multi 10000",
 ];
 
 fn usage() -> ! {
@@ -243,7 +243,7 @@ fn run_batch_repeated(iters: u64, quiet: bool, cap_override: Option<usize>, mode
     }
 }
 
-fn run_flush_batch_unique(iters: u64, cap_override: Option<usize>) {
+fn run_flush_batch_unique(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let cap = cap_override.unwrap_or(2_001);
     let map = build_map(cap);
     let mut seq = 0_u64;
@@ -264,11 +264,19 @@ fn run_flush_batch_unique(iters: u64, cap_override: Option<usize>) {
         .expect("no-op flush should succeed");
     let elapsed = start.elapsed();
     std::mem::forget(map);
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let rate = (iters * 1_000) as f64 / secs;
+        println!(
+            "mode=flush-batch-unique iters={} seconds={:.6} rate={:.2}",
+            iters, secs, rate
+        );
+    }
     std::hint::black_box(flushed);
     std::hint::black_box(elapsed);
 }
 
-fn run_mark_flushed_unique(iters: u64, cap_override: Option<usize>) {
+fn run_mark_flushed_unique(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let cap = cap_override.unwrap_or(2_001);
     let map = build_map(cap);
     let mut seq = 0_u64;
@@ -287,6 +295,14 @@ fn run_mark_flushed_unique(iters: u64, cap_override: Option<usize>) {
     let flushed = map.low_level().mark_flushed(&batch);
     let elapsed = start.elapsed();
     std::mem::forget(map);
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let rate = (iters * 1_000) as f64 / secs;
+        println!(
+            "mode=mark-flushed-unique iters={} seconds={:.6} rate={:.2}",
+            iters, secs, rate
+        );
+    }
     std::hint::black_box(flushed);
     std::hint::black_box(elapsed);
 }
@@ -320,7 +336,7 @@ fn fill_clean_noise(
     }
 }
 
-fn run_flush_batch_build_multi(iters: u64, cap_override: Option<usize>) {
+fn run_flush_batch_build_multi(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let cap = cap_override.unwrap_or(2_001);
     let mut maps = Vec::with_capacity(iters as usize);
     let mut seq = 0_u64;
@@ -343,11 +359,19 @@ fn run_flush_batch_build_multi(iters: u64, cap_override: Option<usize>) {
     }
     let elapsed = start.elapsed();
     std::mem::forget(maps);
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let rate = (iters * 1_000) as f64 / secs;
+        println!(
+            "mode=flush-batch-build-multi iters={} seconds={:.6} rate={:.2}",
+            iters, secs, rate
+        );
+    }
     std::hint::black_box(total);
     std::hint::black_box(elapsed);
 }
 
-fn run_mark_flushed_multi(iters: u64, cap_override: Option<usize>) {
+fn run_mark_flushed_multi(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let cap = cap_override.unwrap_or(2_001);
     let mut pending = Vec::with_capacity(iters as usize);
     let mut seq = 0_u64;
@@ -371,11 +395,19 @@ fn run_mark_flushed_multi(iters: u64, cap_override: Option<usize>) {
     }
     let elapsed = start.elapsed();
     std::mem::forget(pending);
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let rate = (iters * 1_000) as f64 / secs;
+        println!(
+            "mode=mark-flushed-multi iters={} seconds={:.6} rate={:.2}",
+            iters, secs, rate
+        );
+    }
     std::hint::black_box(total);
     std::hint::black_box(elapsed);
 }
 
-fn run_materialize_dirty_arcs_multi(iters: u64, cap_override: Option<usize>) {
+fn run_materialize_dirty_arcs_multi(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let count = cap_override.unwrap_or(1_000);
     let mut seq = 0_u64;
     let mut inputs = Vec::with_capacity(iters as usize);
@@ -407,11 +439,20 @@ fn run_materialize_dirty_arcs_multi(iters: u64, cap_override: Option<usize>) {
         std::hint::black_box(entries);
     }
     let elapsed = start.elapsed();
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let writes = (iters as f64) * (count as f64);
+        let rate = writes / secs;
+        println!(
+            "mode=materialize-dirty-arcs-multi iters={} count={} seconds={:.6} rate={:.2}",
+            iters, count, secs, rate
+        );
+    }
     std::hint::black_box(total);
     std::hint::black_box(elapsed);
 }
 
-fn run_materialize_dirty_arcs_keyclone_multi(iters: u64, cap_override: Option<usize>) {
+fn run_materialize_dirty_arcs_keyclone_multi(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let count = cap_override.unwrap_or(1_000);
     let mut seq = 0_u64;
     let mut inputs = Vec::with_capacity(iters as usize);
@@ -444,11 +485,20 @@ fn run_materialize_dirty_arcs_keyclone_multi(iters: u64, cap_override: Option<us
         std::hint::black_box(entries);
     }
     let elapsed = start.elapsed();
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let writes = (iters as f64) * (count as f64);
+        let rate = writes / secs;
+        println!(
+            "mode=materialize-dirty-arcs-keyclone-multi iters={} count={} seconds={:.6} rate={:.2}",
+            iters, count, secs, rate
+        );
+    }
     std::hint::black_box(total);
     std::hint::black_box(elapsed);
 }
 
-fn run_clone_keys_multi(iters: u64, cap_override: Option<usize>) {
+fn run_clone_keys_multi(iters: u64, quiet: bool, cap_override: Option<usize>) {
     let count = cap_override.unwrap_or(1_000);
     let mut seq = 0_u64;
     let mut inputs = Vec::with_capacity(iters as usize);
@@ -470,6 +520,15 @@ fn run_clone_keys_multi(iters: u64, cap_override: Option<usize>) {
         std::hint::black_box(clones);
     }
     let elapsed = start.elapsed();
+    if !quiet {
+        let secs = elapsed.as_secs_f64();
+        let writes = (iters as f64) * (count as f64);
+        let rate = writes / secs;
+        println!(
+            "mode=clone-keys-multi iters={} count={} seconds={:.6} rate={:.2}",
+            iters, count, secs, rate
+        );
+    }
     std::hint::black_box(total);
     std::hint::black_box(elapsed);
 }

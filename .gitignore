@@ -1,7 +1,9 @@
 /target
 **/target/
 /aidocs/
+.codex
 .codex-review-*
+.hermes-harness/
 /perf.data
 /perf.data.old
 /cachelog-core/target/

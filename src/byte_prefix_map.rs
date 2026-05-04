@@ -129,18 +129,22 @@ where
         }
     }
 
+    /// Mirror of the wrapped map's visible-entry count.
     pub fn visible_len(&self) -> usize {
         self.inner.visible_len()
     }
 
+    /// Mirror of the wrapped map's dirty-log count.
     pub fn dirty_log_len(&self) -> usize {
         self.inner.dirty_log_len()
     }
 
+    /// Mirror of the wrapped map's clean-store count.
     pub fn clean_store_len(&self) -> usize {
         self.inner.clean_store_len()
     }
 
+    /// Mirror of [`CacheLogMap::read`], preserving the product read API.
     pub fn read<R>(
         &self,
         key: &[u8],
@@ -149,6 +153,7 @@ where
         self.inner.read(key, reader)
     }
 
+    /// Mirror of the low-level read path that exposes the wrapped entry ref.
     pub fn read_full<R>(
         &self,
         key: &[u8],
@@ -157,12 +162,16 @@ where
         self.inner.low_level().read_full(key, reader)
     }
 
+    /// Mirror of the wrapped product write API, and enqueues the key for trie
+    /// publication.
     pub fn put(&self, key: Vec<u8>, value: V) {
         let prefix_key = PrefixKey::new(key.clone());
         self.inner.put(key, value);
         let _ = self.updates_tx.send(prefix_key);
     }
 
+    /// Batch form of [`put`]; keys are enqueued for trie publication after the
+    /// wrapped map accepts the batch.
     pub fn put_batch(&self, entries: Vec<(Vec<u8>, V)>) -> usize {
         if entries.is_empty() {
             return 0;
@@ -180,6 +189,7 @@ where
         written
     }
 
+    /// Low-level dirty insert that also publishes the key to the trie queue.
     pub fn insert_dirty(&self, key: Vec<u8>, value: V) -> WriteId {
         let prefix_key = PrefixKey::new(key.clone());
         let id = self.inner.low_level().insert_dirty(key, value);
@@ -187,10 +197,12 @@ where
         id
     }
 
+    /// Alias for [`insert_dirty`].
     pub fn upsert_dirty(&self, key: Vec<u8>, value: V) -> WriteId {
         self.insert_dirty(key, value)
     }
 
+    /// Mirror of the wrapped clean insert, with trie publication when it wins.
     pub fn insert_clean_if_absent(&self, key: Vec<u8>, value: V) -> Option<CacheId> {
         let prefix_key = PrefixKey::new(key.clone());
         let inserted = self.inner.insert_clean_if_absent(key, value);
@@ -211,13 +223,7 @@ where
         limit: usize,
         persist: impl FnOnce(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
     ) -> Result<usize, E> {
-        let batch = self.flush_batch(limit.max(1));
-        if batch.is_empty() {
-            return Ok(0);
-        }
-        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
-        persist(&persist_batch)?;
-        Ok(self.mark_flushed(&batch))
+        Self::flush_once_with_persist(&self.inner, &self.prefix_trie, limit, persist)
     }
 
     /// Repeatedly flush pending dirty data through the common persist callback
@@ -227,16 +233,7 @@ where
         limit: usize,
         mut persist: impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
     ) -> Result<usize, E> {
-        let mut total = 0_usize;
-        loop {
-            let batch = self.flush_batch(limit.max(1));
-            if batch.is_empty() {
-                return Ok(total);
-            }
-            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
-            persist(&persist_batch)?;
-            total += self.mark_flushed(&batch);
-        }
+        Self::flush_until_empty(&self.inner, &self.prefix_trie, limit, &mut persist)
     }
 
     /// Flush pending dirty data through the common persist callback surface,
@@ -252,9 +249,52 @@ where
     }
 
     /// Complete a low-level id-bearing flush batch previously acquired via
-    /// [`flush_batch`].
+    /// [`flush_batch`]. This is trie-preserving: it only removes keys once the
+    /// wrapped map no longer exposes a visible value for them.
     pub fn mark_flushed(&self, batch: &FlushBatch<Vec<u8>, V>) -> usize {
         Self::mark_flushed_inner(&self.inner, &self.prefix_trie, batch)
+    }
+
+    fn flush_once_with_persist<E>(
+        inner: &CacheLogMap<Vec<u8>, V, H>,
+        prefix_trie: &RwLock<Trie<PrefixKey, ()>>,
+        limit: usize,
+        persist: impl FnOnce(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let batch = inner.low_level().flush_batch(limit.max(1));
+        if batch.is_empty() {
+            return Ok(0);
+        }
+        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+        persist(&persist_batch)?;
+        Ok(Self::mark_flushed_inner(inner, prefix_trie, &batch))
+    }
+
+    fn flush_until_empty<E>(
+        inner: &CacheLogMap<Vec<u8>, V, H>,
+        prefix_trie: &RwLock<Trie<PrefixKey, ()>>,
+        limit: usize,
+        persist: &mut impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let mut total = 0_usize;
+        loop {
+            let batch = inner.low_level().flush_batch(limit.max(1));
+            if batch.is_empty() {
+                return Ok(total);
+            }
+            total += Self::persist_and_mark_batch(inner, prefix_trie, &batch, persist)?;
+        }
+    }
+
+    fn persist_and_mark_batch<E>(
+        inner: &CacheLogMap<Vec<u8>, V, H>,
+        prefix_trie: &RwLock<Trie<PrefixKey, ()>>,
+        batch: &FlushBatch<Vec<u8>, V>,
+        persist: &mut impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
+    ) -> Result<usize, E> {
+        let persist_batch = PersistBatch::from_flush_batch(batch.clone());
+        persist(&persist_batch)?;
+        Ok(Self::mark_flushed_inner(inner, prefix_trie, batch))
     }
 
     fn mark_flushed_inner(
@@ -288,7 +328,19 @@ where
 
     /// Drain up to `max_items` pending keys and apply them to the prefix trie.
     ///
-    /// Returns the number of unique keys applied to trie state.
+    /// Key/value writes are enqueued to an internal channel immediately on
+    /// [`put`][Self::put] / [`insert_dirty`][Self::insert_dirty], but the prefix
+    /// trie is updated lazily by this method. That decouples trie visibility
+    /// from dirty-write visibility: a key can be flushed before its prefix is
+    /// visible in the trie, and vice versa.
+    ///
+    /// Keys are sorted and deduplicated before insertion, so redundant writes
+    /// are collapsed into a single trie entry.
+    ///
+    /// Call this periodically from a maintenance thread when idle. It is
+    /// side-effect-free with respect to persisted state.
+    ///
+    /// Returns the number of unique keys inserted into the trie.
     pub fn advance_trie(&self, max_items: usize) -> usize {
         if max_items == 0 {
             return 0;
@@ -336,6 +388,7 @@ where
         keys
     }
 
+    /// Visit matching trie keys and call `reader` for each visible entry.
     pub fn for_each_prefix_key(
         &self,
         prefix: &[u8],
@@ -355,6 +408,11 @@ where
         matched
     }
 
+    /// Collect prefix matches into a vector.
+    ///
+    /// Compared with `CacheLogMap`, this is trie-driven and only sees keys
+    /// that have been published via [`advance_trie`]. It does not flush dirty
+    /// state.
     pub fn list_prefix<R>(
         &self,
         prefix: &[u8],
@@ -372,6 +430,10 @@ where
     }
 
     #[cfg(not(feature = "loom"))]
+    /// Start the background flush service with an explicit config.
+    ///
+    /// This is a BytePrefixMap-specific wrapper around the wrapped map's flush
+    /// loop; it keeps the prefix trie in sync when batches are acknowledged.
     pub fn start_background_flush(
         &self,
         config: BackgroundFlushConfig,
@@ -385,6 +447,7 @@ where
     }
 
     #[cfg(not(feature = "loom"))]
+    /// Start background flush with the default config.
     pub fn start_background_flush_default(
         &self,
         persist: impl Fn(&PersistBatch<Vec<u8>, V>) -> Result<(), String> + Send + Sync + 'static,
@@ -397,6 +460,7 @@ where
     }
 
     #[cfg(not(feature = "loom"))]
+    /// Start background flush using a batch-size-derived config.
     pub fn start_background_flush_for_batch_size(
         &self,
         batch_size: usize,
@@ -448,16 +512,7 @@ where
         limit: usize,
         mut persist: impl FnMut(&PersistBatch<Vec<u8>, V>) -> Result<(), E>,
     ) -> Result<usize, E> {
-        let mut total = 0_usize;
-        loop {
-            let batch = inner.low_level().flush_batch(limit.max(1));
-            if batch.is_empty() {
-                return Ok(total);
-            }
-            let persist_batch = PersistBatch::from_flush_batch(batch.clone());
-            persist(&persist_batch)?;
-            total += Self::mark_flushed_inner(inner, prefix_trie, &batch);
-        }
+        Self::flush_until_empty(inner, prefix_trie, limit, &mut persist)
     }
 }
 
